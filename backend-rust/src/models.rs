@@ -143,6 +143,17 @@ pub struct News {
 pub struct Tournament {
     pub id: String,
     pub name: String,
+    pub slug: Option<String>,
+    pub start_date: Option<String>,
+    pub end_date: Option<String>,
+    pub description: Option<String>,
     pub status: String,
     pub created_at: Option<DateTime<Utc>>,
+    pub teams: Option<Vec<Team>>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TournamentTeam {
+    pub tournament_id: String,
+    pub team_id: String,
 }
