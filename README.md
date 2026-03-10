@@ -5,7 +5,6 @@ colorFrom: blue
 colorTo: green
 sdk: docker
 pinned: false
-app_port: 8080
 ---
 
 # BSCCA App Backend

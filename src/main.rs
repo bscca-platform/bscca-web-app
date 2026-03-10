@@ -44,7 +44,11 @@ async fn main() -> anyhow::Result<()> {
         .layer(CorsLayer::permissive())
         .with_state(state);
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await?;
+    let port = env::var("PORT")
+        .unwrap_or_else(|_| "7860".to_string())
+        .parse::<u16>()?;
+
+    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port)).await?;
     tracing::debug!("listening on {}", listener.local_addr()?);
     
     axum::serve(listener, app).await?;
