@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-axum = { version = "0.7", features = ["macros"] }
+axum = "0.7"
 tokio = { version = "1.0", features = ["full", "macros"] }
 libsql = { version = "0.6", features = ["hrana"] }
 serde = { version = "1.0", features = ["derive"] }
@@ -16,5 +16,5 @@ uuid = { version = "1.0", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-tokio-stream = "0.1"
+tokio-stream = { version = "0.1", features = ["sync"] }
 futures-util = "0.3"
