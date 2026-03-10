@@ -1,5 +1,11 @@
 FROM rust:1.94-slim-bookworm as builder
 
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    libsqlite3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 COPY . .
 
