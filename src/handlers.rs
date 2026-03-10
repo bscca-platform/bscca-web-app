@@ -4,6 +4,7 @@ use axum::{
     response::{sse::{Event, Sse}, IntoResponse},
     Json,
 };
+use serde::Deserialize;
 use crate::db::Database;
 use crate::models::*;
 use std::sync::Arc;
@@ -263,7 +264,7 @@ pub async fn upsert_live_details(
     let id = if payload.id.is_empty() { Uuid::new_v4().to_string() } else { payload.id };
 
     let res = state.db.client.execute(sql, libsql::params![
-        id, payload.match_id, payload.team1_id, payload.team2_id, payload.team1_score, payload.team1_overs, payload.team2_score, payload.team2_overs, payload.team2_status, payload.toss_winner_id, payload.match_status_text,
+        id, payload.match_id.clone(), payload.team1_id, payload.team2_id, payload.team1_score, payload.team1_overs, payload.team2_score, payload.team2_overs, payload.team2_status, payload.toss_winner_id, payload.match_status_text,
         payload.current_batter_1_id, payload.current_batter_1_runs, payload.current_batter_1_balls,
         payload.current_batter_2_id, payload.current_batter_2_runs, payload.current_batter_2_balls,
         payload.current_bowler_id, payload.current_bowler_wickets, payload.current_bowler_runs, payload.current_bowler_overs
@@ -301,7 +302,7 @@ pub async fn initialize_match(
                VALUES (?, ?, ?, ?, '0/0', '0.0', '0/0', 'Yet to Bat', CURRENT_TIMESTAMP)";
     
     let res = state.db.client.execute(sql, libsql::params![
-        Uuid::new_v4().to_string(), payload.match_id, payload.toss_winner_id, toss_text
+        Uuid::new_v4().to_string(), payload.match_id.clone(), payload.toss_winner_id, toss_text
     ]).await;
 
     match res {
@@ -329,7 +330,7 @@ pub async fn finish_match(
     // 1. Update match
     let res = state.db.client.execute(
         "UPDATE matches SET status = 'finished', team1_score = ?, team2_score = ?, winner_id = ?, result_text = ? WHERE id = ?",
-        libsql::params![payload.team1_score, payload.team2_score, payload.winner_id, payload.result_text.unwrap_or_default(), payload.match_id.clone()]
+        libsql::params![payload.team1_score, payload.team2_score, payload.winner_id.clone(), payload.result_text.unwrap_or_default(), payload.match_id.clone()]
     ).await;
 
     if res.is_err() {
@@ -338,7 +339,7 @@ pub async fn finish_match(
 
     // 2. Update team stats (Simplified: just increment played/won/lost)
     // In a real app, you'd calculate NRR here too
-    let _ = state.db.client.execute("UPDATE teams SET played = played + 1, won = won + 1 WHERE id = ?", libsql::params![payload.winner_id]).await;
+    let _ = state.db.client.execute("UPDATE teams SET played = played + 1, won = won + 1 WHERE id = ?", libsql::params![payload.winner_id.clone()]).await;
     let _ = state.db.client.execute(
         "UPDATE teams SET played = played + 1, lost = lost + 1 WHERE id = (SELECT CASE WHEN team1_id = ? THEN team2_id ELSE team1_id END FROM matches WHERE id = ?)",
         libsql::params![payload.winner_id, payload.match_id.clone()]
