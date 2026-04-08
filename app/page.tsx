@@ -22,7 +22,7 @@ export default function Home() {
   const { matches, loading: matchesLoading } = useMatches();
   const { data: liveData, loading: liveLoading } = useLiveMatch();
 
-  // Derive data from Supabase
+  // Derive data from Turso DB
   const upcomingMatches = matches
     .filter((m: any) => m.status === "upcoming")
     .map((m: any) => ({

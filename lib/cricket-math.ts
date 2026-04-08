@@ -56,6 +56,7 @@ export function strikeRate(runs: number, balls: number): string {
 export function battingAverage(runs: number, innings: number, notOuts: number = 0): string {
     const dismissals = innings - notOuts;
     if (dismissals <= 0) return runs > 0 ? "∞" : "0.00";
+    if (isNaN(runs)) return "0.00";
     return (runs / dismissals).toFixed(2);
 }
 
@@ -143,6 +144,7 @@ export function projectedScore(currentRuns: number, currentOvers: string | numbe
 export function winProbability(currentRR: number, requiredRR: number): number {
     if (requiredRR <= 0) return 100;
     if (currentRR <= 0) return 0;
+    if (isNaN(currentRR) || isNaN(requiredRR)) return 50;
     const ratio = currentRR / requiredRR;
     return Math.min(100, Math.max(0, Math.round(ratio * 50)));
 }

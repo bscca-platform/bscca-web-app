@@ -3,6 +3,7 @@
 -- ============================================================
 
 -- ── 1. DROP EXISTING TABLES ──
+DROP TABLE IF EXISTS tournament_teams;
 DROP TABLE IF EXISTS scorecard_bowling;
 DROP TABLE IF EXISTS scorecard_batting;
 DROP TABLE IF EXISTS live_match_details;
@@ -10,6 +11,7 @@ DROP TABLE IF EXISTS news;
 DROP TABLE IF EXISTS matches;
 DROP TABLE IF EXISTS players;
 DROP TABLE IF EXISTS teams;
+DROP TABLE IF EXISTS tournaments;
 
 -- ── 2. CREATE TABLES ──
 
@@ -28,9 +30,9 @@ CREATE TABLE teams (
     lost INTEGER DEFAULT 0,
     nrr TEXT DEFAULT '0.000',
     total_runs_scored INTEGER DEFAULT 0,
-    total_overs_faced REAL DEFAULT 0,
+    total_balls_faced INTEGER DEFAULT 0,
     total_runs_conceded INTEGER DEFAULT 0,
-    total_overs_bowled REAL DEFAULT 0,
+    total_balls_bowled INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -119,8 +121,10 @@ CREATE TABLE live_match_details (
 CREATE TABLE scorecard_batting (
     id TEXT PRIMARY KEY,
     match_id TEXT REFERENCES matches(id) ON DELETE CASCADE,
-    team_id TEXT REFERENCES teams(id),
-    player_id TEXT REFERENCES players(id),
+    team_id TEXT REFERENCES teams(id) ON DELETE SET NULL,
+    player_id TEXT REFERENCES players(id) ON DELETE SET NULL,
+    player_name TEXT, -- Snapshot for history
+    team_name TEXT,   -- Snapshot for history
     runs INTEGER DEFAULT 0,
     balls INTEGER DEFAULT 0,
     fours INTEGER DEFAULT 0,
@@ -135,9 +139,11 @@ CREATE TABLE scorecard_batting (
 CREATE TABLE scorecard_bowling (
     id TEXT PRIMARY KEY,
     match_id TEXT REFERENCES matches(id) ON DELETE CASCADE,
-    team_id TEXT REFERENCES teams(id),
-    player_id TEXT REFERENCES players(id),
-    overs TEXT DEFAULT '0.0',
+    team_id TEXT REFERENCES teams(id) ON DELETE SET NULL,
+    player_id TEXT REFERENCES players(id) ON DELETE SET NULL,
+    player_name TEXT, -- Snapshot for history
+    team_name TEXT,   -- Snapshot for history
+    overs_balls INTEGER DEFAULT 0, -- Store total balls
     runs INTEGER DEFAULT 0,
     wickets INTEGER DEFAULT 0,
     order_index INTEGER DEFAULT 0,
@@ -153,10 +159,22 @@ CREATE TABLE news (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Tournaments Table (Inferred from component usage)
+-- Tournaments Table
 CREATE TABLE tournaments (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
-    status TEXT DEFAULT 'upcoming',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    slug TEXT UNIQUE,
+    start_date TEXT,
+    end_date TEXT,
+    description TEXT,
+    status TEXT DEFAULT 'scheduled',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    CHECK (status IN ('scheduled', 'active', 'completed'))
+);
+
+-- Tournament-Teams Join Table
+CREATE TABLE tournament_teams (
+    tournament_id TEXT NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
+    team_id TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    PRIMARY KEY (tournament_id, team_id)
 );

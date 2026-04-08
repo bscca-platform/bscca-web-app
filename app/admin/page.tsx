@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { PlusCircle, Users, Trophy, ClipboardList, Database, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { api } from "@/lib/api";
 import AdminLockScreen from "@/components/admin/AdminLockScreen";
 import AdminSidebar, { AdminSection } from "@/components/admin/AdminSidebar";
 import TeamsManager from "@/components/admin/TeamsManager";
@@ -59,16 +60,34 @@ export default function AdminPage() {
 }
 
 function OverviewModule() {
+    const [stats, setStats] = useState({ players: 0, teams: 0, matches: 0, revenue: "₹45K" });
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        api.getAdminStats().then(data => {
+            setStats(data);
+            setLoading(false);
+        }).catch(err => {
+            console.error("Failed to fetch stats:", err);
+            setLoading(false);
+        });
+    }, []);
+
+    const statItems = [
+        { label: "Active Players", value: stats.players.toString(), icon: Users, trend: "+12", trendUp: true },
+        { label: "Total Teams", value: stats.teams.toString().padStart(2, '0'), icon: Shield, trend: "Stable", trendUp: false },
+        { label: "Match Count", value: stats.matches.toString(), icon: ClipboardList, trend: "Season 1", trendUp: false },
+        { label: "Total Revenue", value: stats.revenue, icon: Trophy, trend: "+15%", trendUp: true },
+    ];
+
     return (
         <div className="space-y-10">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                    { label: "Active Players", value: "142", icon: Users, trend: "+12", trendUp: true },
-                    { label: "Total Teams", value: "08", icon: Shield, trend: "Stable", trendUp: false },
-                    { label: "Match Count", value: "32", icon: ClipboardList, trend: "Season 1", trendUp: false },
-                    { label: "Total Revenue", value: "₹45K", icon: Trophy, trend: "+15%", trendUp: true },
-                ].map((stat, i) => (
-                    <Card key={i} className="rounded-2xl border border-white/5 bg-white/[0.03] backdrop-blur-sm hover:bg-white/[0.06] transition-all group cursor-default">
+                {statItems.map((stat, i) => (
+                    <Card key={i} className={cn(
+                        "rounded-2xl border border-white/5 bg-white/[0.03] backdrop-blur-sm hover:bg-white/[0.06] transition-all group cursor-default",
+                        loading && "animate-pulse"
+                    )}>
                         <CardContent className="p-6">
                             <div className="flex justify-between items-start mb-4">
                                 <div className="p-2.5 bg-white/5 rounded-xl group-hover:bg-accent/10 transition-colors">
@@ -77,7 +96,7 @@ function OverviewModule() {
                                 <span className={cn("text-[10px] font-medium", stat.trendUp ? "text-emerald-400" : "text-white/30")}>{stat.trend}</span>
                             </div>
                             <div className="space-y-1">
-                                <p className="text-3xl font-bold text-white tracking-tight">{stat.value}</p>
+                                <p className="text-3xl font-bold text-white tracking-tight">{loading ? "..." : stat.value}</p>
                                 <p className="text-[11px] text-white/40 font-medium">{stat.label}</p>
                             </div>
                         </CardContent>

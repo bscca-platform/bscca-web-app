@@ -1,10 +1,11 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7860/api';
 
 export async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         ...options,
         headers: {
             'Content-Type': 'application/json',
+            'X-API-Key': process.env.NEXT_PUBLIC_ADMIN_API_KEY || 'bscca-secret-786',
             ...options?.headers,
         },
     });
@@ -47,6 +48,7 @@ export const api = {
     createPlayer: (data: any) => apiFetch<any>('/players', { method: 'POST', body: JSON.stringify(data) }),
     updatePlayer: (id: string, data: any) => apiFetch<any>(`/players/${id}`, { method: 'POST', body: JSON.stringify(data) }),
     deletePlayer: (id: string) => apiFetch<any>(`/players/${id}`, { method: 'DELETE' }),
+    getAdminStats: () => apiFetch<{players: number, teams: number, matches: number, revenue: string}>('/admin/stats'),
     uploadFile: async (file: File) => {
         const formData = new FormData();
         formData.append('file', file);

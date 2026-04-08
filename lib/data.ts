@@ -1,6 +1,6 @@
 /**
  * ── BSCCA Data Defaults ──
- * Empty defaults used as initial state before Supabase data loads.
+ * Empty defaults used as initial state before Turso data loads.
  * No hardcoded mock data — everything comes from the database.
  */
 
