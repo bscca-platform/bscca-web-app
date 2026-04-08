@@ -1,6 +1,7 @@
 mod db;
 mod models;
 mod handlers;
+mod cricket;
 
 use axum::{routing::{get, post}, Router};
 use std::env;
@@ -27,33 +28,38 @@ async fn main() -> anyhow::Result<()> {
     let state = Arc::new(AppState {
         db: Arc::new(db),
         tx,
+        http: reqwest::Client::new(),
     });
 
     let app = Router::new()
         .route("/api/teams", get(get_teams).post(handlers::create_team))
-        .route("/api/teams/:id", post(handlers::update_team).delete(handlers::delete_team))
+        .route("/api/teams/{id}", post(handlers::update_team).delete(handlers::delete_team))
         .route("/api/players", get(handlers::get_players).post(handlers::create_player))
-        .route("/api/players/:id", post(handlers::update_player).delete(handlers::delete_player))
+        .route("/api/players/{id}", post(handlers::update_player).delete(handlers::delete_player))
         .route("/api/matches", get(handlers::get_matches).post(handlers::create_match))
-        .route("/api/matches/:id", post(handlers::update_match))
+        .route("/api/matches/{id}", post(handlers::update_match))
         .route("/api/live_match_details", post(handlers::upsert_live_details))
         .route("/api/matches/initialize", post(handlers::initialize_match))
         .route("/api/matches/finish", post(handlers::finish_match))
         .route("/api/matches/live", get(get_live_match))
         .route("/api/tournaments", get(handlers::get_tournaments).post(handlers::create_tournament))
-        .route("/api/tournaments/:id", post(handlers::update_tournament).delete(handlers::delete_tournament))
+        .route("/api/tournaments/{id}", post(handlers::update_tournament).delete(handlers::delete_tournament))
+        .route("/api/tournaments/{id}/teams", post(handlers::sync_tournament_teams))
         .route("/api/scorecards/batting/upsert", post(handlers::upsert_scorecard_batting))
         .route("/api/scorecards/bowling/upsert", post(handlers::upsert_scorecard_bowling))
-        .route("/api/teams/:id/players", get(handlers::get_team_players))
-        .route("/api/teams/:id/matches", get(handlers::get_team_matches))
-        .route("/api/teams/:id/scorecards/batting", get(handlers::get_team_scorecards_batting))
-        .route("/api/teams/:id/scorecards/bowling", get(handlers::get_team_scorecards_bowling))
-        .route("/api/teams/slug/:slug", get(handlers::get_team_by_slug))
-        .route("/api/players/slug/:slug", get(handlers::get_player_by_slug))
-        .route("/api/scorecards/batting/:match_id", get(handlers::get_scorecard_batting))
-        .route("/api/scorecards/bowling/:match_id", get(handlers::get_scorecard_bowling))
+        .route("/api/teams/{id}/players", get(handlers::get_team_players))
+        .route("/api/teams/{id}/matches", get(handlers::get_team_matches))
+        .route("/api/teams/{id}/scorecards/batting", get(handlers::get_team_scorecards_batting))
+        .route("/api/teams/{id}/scorecards/bowling", get(handlers::get_team_scorecards_bowling))
+        .route("/api/teams/slug/{slug}", get(handlers::get_team_by_slug))
+        .route("/api/players/slug/{slug}", get(handlers::get_player_by_slug))
+        .route("/api/scorecards/batting/{match_id}", get(handlers::get_scorecard_batting))
+        .route("/api/scorecards/bowling/{match_id}", get(handlers::get_scorecard_bowling))
         .route("/api/upload", post(handlers::upload_handler))
         .route("/api/events", get(events_handler))
+        .route("/api/admin/stats", get(handlers::get_admin_stats))
+        // Protect all mutation routes and admin stats
+        // (In a real app, use a dedicated middleware; for now, we'll implement checks in handlers or a layer)
         .layer(CorsLayer::permissive())
         .with_state(state);
 
