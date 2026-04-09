@@ -999,6 +999,45 @@ pub async fn upload_handler(
     }
 }
 
+pub async fn proxy_image(
+    State(state): State<Arc<AppState>>,
+    axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
+) -> impl IntoResponse {
+    let url = match params.get("url") {
+        Some(u) => u,
+        None => return (StatusCode::BAD_REQUEST, "Missing url parameter").into_response(),
+    };
+
+    // Ensure it's a Hugging Face URL for security
+    if !url.starts_with("https://huggingface.co/") {
+        return (StatusCode::BAD_REQUEST, "Invalid image source").into_response();
+    }
+
+    let hf_token = std::env::var("HF_TOKEN").unwrap_or_default();
+    let res = state.http.get(url)
+        .header("Authorization", format!("Bearer {}", hf_token))
+        .send()
+        .await;
+
+    match res {
+        Ok(resp) => {
+            let content_type = resp.headers()
+                .get("content-type")
+                .and_then(|h| h.to_str().ok())
+                .unwrap_or("image/jpeg")
+                .to_string();
+            
+            let bytes = resp.bytes().await.unwrap_or_default();
+            (
+                [(axum::http::header::CONTENT_TYPE, content_type)],
+                bytes
+            ).into_response()
+        },
+        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Failed to fetch image").into_response(),
+    }
+}
+
+
 pub async fn upsert_scorecard_batting(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<ScorecardBatting>,
