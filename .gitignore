@@ -42,9 +42,13 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# binary assets rejected by HF (moved to specific subdirectory if needed)
-# public/*.png
-# public/*.jpg
-# app/*.ico
-# backend-rust/
+# backend repository (separate from frontend)
+backend-rust/
+
+# binary assets tracking (allowing site assets)
+!public/*.png
+!public/*.jpg
+!public/*.svg
+!app/*.ico
+
 
