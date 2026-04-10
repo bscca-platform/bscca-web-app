@@ -20,3 +20,19 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tokio-stream = { version = "0.1", features = ["sync"] }
 futures-util = "0.3"
 reqwest = { version = "0.12", features = ["json", "multipart"] }
+
+[[bin]]
+name = "setup_db"
+path = "src/bin/setup_db.rs"
+
+[[bin]]
+name = "check_db"
+path = "src/bin/check_db.rs"
+
+[[bin]]
+name = "seed_db"
+path = "src/bin/seed_db.rs"
+
+[[bin]]
+name = "backend-rust"
+path = "src/main.rs"

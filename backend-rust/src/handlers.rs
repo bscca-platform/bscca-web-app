@@ -31,7 +31,10 @@ pub async fn broadcast_update(state: &Arc<AppState>, match_id: &str) {
 pub async fn get_teams(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     let mut rows = match state.db.client.query("SELECT * FROM teams", ()).await {
         Ok(rows) => rows,
-        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "DB Error").into_response(),
+        Err(e) => {
+            tracing::error!("Failed to fetch teams: {:?}", e);
+            return (StatusCode::INTERNAL_SERVER_ERROR, "DB Error").into_response();
+        }
     };
 
     let mut teams = Vec::new();
@@ -66,7 +69,10 @@ pub async fn get_live_match(State(state): State<Arc<AppState>>) -> impl IntoResp
     // 1. Find live match
     let mut rows = match state.db.client.query("SELECT * FROM matches WHERE status = 'live' LIMIT 1", ()).await {
         Ok(rows) => rows,
-        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "DB Error").into_response(),
+        Err(e) => {
+            tracing::error!("Failed to fetch live match: {:?}", e);
+            return (StatusCode::INTERNAL_SERVER_ERROR, "DB Error").into_response();
+        }
     };
 
     if let Ok(Some(row)) = rows.next().await {
@@ -184,7 +190,10 @@ pub async fn get_tournaments(State(state): State<Arc<AppState>>) -> impl IntoRes
     
     let mut rows = match state.db.client.query(sql, ()).await {
         Ok(rows) => rows,
-        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "DB Error").into_response(),
+        Err(e) => {
+            tracing::error!("Failed to fetch tournaments: {:?}", e);
+            return (StatusCode::INTERNAL_SERVER_ERROR, "DB Error").into_response(),
+        }
     };
 
     let mut tournament_map: std::collections::HashMap<String, Tournament> = std::collections::HashMap::new();
