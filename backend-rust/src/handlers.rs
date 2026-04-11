@@ -14,6 +14,7 @@ use futures_util::stream::Stream;
 use std::convert::Infallible;
 use uuid::Uuid;
 use axum::extract::Multipart;
+#[allow(unused_imports)]
 use base64::{Engine as _, engine::general_purpose};
 use crate::cricket;
 
@@ -29,36 +30,35 @@ pub async fn broadcast_update(state: &Arc<AppState>, match_id: &str) {
 }
 
 pub async fn get_teams(State(state): State<Arc<AppState>>) -> impl IntoResponse {
-    let mut rows = match state.db.client.query("SELECT * FROM teams", ()).await {
+    let sql = "SELECT id, name, slug, location, initials, description, image, achievements, played, won, lost, nrr, total_runs_scored, total_balls_faced, total_runs_conceded, total_balls_bowled FROM teams";
+    let mut rows = match state.db.client.query(sql, ()).await {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!("Failed to fetch teams: {:?}", e);
-            return (StatusCode::INTERNAL_SERVER_ERROR, "DB Error").into_response();
+            return (StatusCode::INTERNAL_SERVER_ERROR, format!("DB Error: {}", e)).into_response();
         }
     };
 
     let mut teams = Vec::new();
     while let Ok(Some(row)) = rows.next().await {
-        // Map row to Team struct (simplified for now)
-        // In a real app, use a helper or sqlx-like macro
         teams.push(Team {
-            id: row.get(0).unwrap_or_default(),
-            name: row.get(1).unwrap_or_default(),
-            slug: row.get(2).unwrap_or_default(),
-            location: row.get(3).ok(),
-            initials: row.get(4).ok(),
-            description: row.get(5).ok(),
-            image: row.get(6).ok(),
-            achievements: row.get(7).ok(),
-            played: row.get(8).unwrap_or(0),
-            won: row.get(9).unwrap_or(0),
-            lost: row.get(10).unwrap_or(0),
-            nrr: row.get(11).unwrap_or_else(|_| "0.000".to_string()),
-            total_runs_scored: row.get(12).unwrap_or(0),
-            total_balls_faced: row.get(13).unwrap_or(0),
-            total_runs_conceded: row.get(14).unwrap_or(0),
-            total_balls_bowled: row.get(15).unwrap_or(0),
-            created_at: None, // Simplified
+            id: row.get::<String>(0).unwrap_or_default(),
+            name: row.get::<String>(1).unwrap_or_default(),
+            slug: row.get::<String>(2).unwrap_or_default(),
+            location: row.get::<Option<String>>(3).ok().flatten(),
+            initials: row.get::<Option<String>>(4).ok().flatten(),
+            description: row.get::<Option<String>>(5).ok().flatten(),
+            image: row.get::<Option<String>>(6).ok().flatten(),
+            achievements: row.get::<Option<String>>(7).ok().flatten(),
+            played: row.get::<i64>(8).unwrap_or(0) as i32,
+            won: row.get::<i64>(9).unwrap_or(0) as i32,
+            lost: row.get::<i64>(10).unwrap_or(0) as i32,
+            nrr: row.get::<String>(11).unwrap_or_else(|_| "0.000".to_string()),
+            total_runs_scored: row.get::<i64>(12).unwrap_or(0) as i32,
+            total_balls_faced: row.get::<i64>(13).unwrap_or(0) as i32,
+            total_runs_conceded: row.get::<i64>(14).unwrap_or(0) as i32,
+            total_balls_bowled: row.get::<i64>(15).unwrap_or(0) as i32,
+            created_at: None,
         });
     }
 
@@ -66,38 +66,38 @@ pub async fn get_teams(State(state): State<Arc<AppState>>) -> impl IntoResponse 
 }
 
 pub async fn get_live_match(State(state): State<Arc<AppState>>) -> impl IntoResponse {
-    // 1. Find live match
-    let mut rows = match state.db.client.query("SELECT * FROM matches WHERE status = 'live' LIMIT 1", ()).await {
+    let sql = "SELECT id, slug, team1_id, team2_id, t1, t2, i1, i2, date, time, venue, status, match_number, stage, team1_score, team2_score, result_text, pom_text, winner_id, match_type, tournament_id FROM matches WHERE status = 'live' LIMIT 1";
+    let mut rows = match state.db.client.query(sql, ()).await {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!("Failed to fetch live match: {:?}", e);
-            return (StatusCode::INTERNAL_SERVER_ERROR, "DB Error").into_response();
+            return (StatusCode::INTERNAL_SERVER_ERROR, format!("DB Error: {}", e)).into_response();
         }
     };
 
     if let Ok(Some(row)) = rows.next().await {
         let match_data = Match {
-            id: row.get(0).unwrap_or_default(),
-            slug: row.get(1).unwrap_or_default(),
-            team1_id: row.get(2).ok(),
-            team2_id: row.get(3).ok(),
-            t1: row.get(4).ok(),
-            t2: row.get(5).ok(),
-            i1: row.get(6).ok(),
-            i2: row.get(7).ok(),
-            date: row.get(8).ok(),
-            time: row.get(9).ok(),
-            venue: row.get(10).ok(),
-            status: row.get(11).unwrap_or_else(|_| "upcoming".to_string()),
-            match_number: row.get(12).ok(),
-            stage: row.get(13).ok(),
-            team1_score: row.get(14).ok(),
-            team2_score: row.get(15).ok(),
-            result_text: row.get(16).ok(),
-            pom_text: row.get(17).ok(),
-            winner_id: row.get(18).ok(),
-            match_type: row.get(19).unwrap_or_else(|_| "tournament".to_string()),
-            tournament_id: row.get(20).ok(),
+            id: row.get::<String>(0).unwrap_or_default(),
+            slug: row.get::<String>(1).unwrap_or_default(),
+            team1_id: row.get::<Option<String>>(2).ok().flatten(),
+            team2_id: row.get::<Option<String>>(3).ok().flatten(),
+            t1: row.get::<Option<String>>(4).ok().flatten(),
+            t2: row.get::<Option<String>>(5).ok().flatten(),
+            i1: row.get::<Option<String>>(6).ok().flatten(),
+            i2: row.get::<Option<String>>(7).ok().flatten(),
+            date: row.get::<Option<String>>(8).ok().flatten(),
+            time: row.get::<Option<String>>(9).ok().flatten(),
+            venue: row.get::<Option<String>>(10).ok().flatten(),
+            status: row.get::<String>(11).unwrap_or_else(|_| "upcoming".to_string()),
+            match_number: row.get::<Option<String>>(12).ok().flatten(),
+            stage: row.get::<Option<String>>(13).ok().flatten(),
+            team1_score: row.get::<Option<String>>(14).ok().flatten(),
+            team2_score: row.get::<Option<String>>(15).ok().flatten(),
+            result_text: row.get::<Option<String>>(16).ok().flatten(),
+            pom_text: row.get::<Option<String>>(17).ok().flatten(),
+            winner_id: row.get::<Option<String>>(18).ok().flatten(),
+            match_type: row.get::<String>(19).unwrap_or_else(|_| "tournament".to_string()),
+            tournament_id: row.get::<Option<String>>(20).ok().flatten(),
             created_at: None,
         };
         return Json(match_data).into_response();
@@ -107,35 +107,39 @@ pub async fn get_live_match(State(state): State<Arc<AppState>>) -> impl IntoResp
 }
 
 pub async fn get_matches(State(state): State<Arc<AppState>>) -> impl IntoResponse {
-    let mut rows = match state.db.client.query("SELECT * FROM matches ORDER BY created_at DESC", ()).await {
+    let sql = "SELECT id, slug, team1_id, team2_id, t1, t2, i1, i2, date, time, venue, status, match_number, stage, team1_score, team2_score, result_text, pom_text, winner_id, match_type, tournament_id FROM matches ORDER BY created_at DESC";
+    let mut rows = match state.db.client.query(sql, ()).await {
         Ok(rows) => rows,
-        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "DB Error").into_response(),
+        Err(e) => {
+            tracing::error!("Failed to fetch matches: {:?}", e);
+            return (StatusCode::INTERNAL_SERVER_ERROR, format!("DB Error: {}", e)).into_response();
+        }
     };
 
     let mut matches = Vec::new();
     while let Ok(Some(row)) = rows.next().await {
         matches.push(Match {
-            id: row.get(0).unwrap_or_default(),
-            slug: row.get(1).unwrap_or_default(),
-            team1_id: row.get(2).ok(),
-            team2_id: row.get(3).ok(),
-            t1: row.get(4).ok(),
-            t2: row.get(5).ok(),
-            i1: row.get(6).ok(),
-            i2: row.get(7).ok(),
-            date: row.get(8).ok(),
-            time: row.get(9).ok(),
-            venue: row.get(10).ok(),
-            status: row.get(11).unwrap_or_else(|_| "upcoming".to_string()),
-            match_number: row.get(12).ok(),
-            stage: row.get(13).ok(),
-            team1_score: row.get(14).ok(),
-            team2_score: row.get(15).ok(),
-            result_text: row.get(16).ok(),
-            pom_text: row.get(17).ok(),
-            winner_id: row.get(18).ok(),
-            match_type: row.get(19).unwrap_or_else(|_| "tournament".to_string()),
-            tournament_id: row.get(20).ok(),
+            id: row.get::<String>(0).unwrap_or_default(),
+            slug: row.get::<String>(1).unwrap_or_default(),
+            team1_id: row.get::<Option<String>>(2).ok().flatten(),
+            team2_id: row.get::<Option<String>>(3).ok().flatten(),
+            t1: row.get::<Option<String>>(4).ok().flatten(),
+            t2: row.get::<Option<String>>(5).ok().flatten(),
+            i1: row.get::<Option<String>>(6).ok().flatten(),
+            i2: row.get::<Option<String>>(7).ok().flatten(),
+            date: row.get::<Option<String>>(8).ok().flatten(),
+            time: row.get::<Option<String>>(9).ok().flatten(),
+            venue: row.get::<Option<String>>(10).ok().flatten(),
+            status: row.get::<String>(11).unwrap_or_else(|_| "upcoming".to_string()),
+            match_number: row.get::<Option<String>>(12).ok().flatten(),
+            stage: row.get::<Option<String>>(13).ok().flatten(),
+            team1_score: row.get::<Option<String>>(14).ok().flatten(),
+            team2_score: row.get::<Option<String>>(15).ok().flatten(),
+            result_text: row.get::<Option<String>>(16).ok().flatten(),
+            pom_text: row.get::<Option<String>>(17).ok().flatten(),
+            winner_id: row.get::<Option<String>>(18).ok().flatten(),
+            match_type: row.get::<String>(19).unwrap_or_else(|_| "tournament".to_string()),
+            tournament_id: row.get::<Option<String>>(20).ok().flatten(),
             created_at: None,
         });
     }
@@ -144,35 +148,39 @@ pub async fn get_matches(State(state): State<Arc<AppState>>) -> impl IntoRespons
 }
 
 pub async fn get_players(State(state): State<Arc<AppState>>) -> impl IntoResponse {
-    let mut rows = match state.db.client.query("SELECT * FROM players", ()).await {
+    let sql = "SELECT id, team_id, name, slug, role, specialization, dob, style_batting, style_bowling, image, bio, matches_played, total_runs, total_balls_faced, strike_rate, highest_score, fifties, wickets, overs_bowled, runs_conceded, economy FROM players";
+    let mut rows = match state.db.client.query(sql, ()).await {
         Ok(rows) => rows,
-        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "DB Error").into_response(),
+        Err(e) => {
+            tracing::error!("Failed to fetch players: {:?}", e);
+            return (StatusCode::INTERNAL_SERVER_ERROR, format!("DB Error: {}", e)).into_response();
+        }
     };
 
     let mut players = Vec::new();
     while let Ok(Some(row)) = rows.next().await {
         players.push(Player {
-            id: row.get(0).unwrap_or_default(),
-            team_id: row.get(1).ok(),
-            name: row.get(2).unwrap_or_default(),
-            slug: row.get(3).unwrap_or_default(),
-            role: row.get(4).ok(),
-            specialization: row.get(5).ok(),
-            dob: row.get(6).ok(),
-            style_batting: row.get(7).ok(),
-            style_bowling: row.get(8).ok(),
-            image: row.get(9).ok(),
-            bio: row.get(10).ok(),
-            matches_played: row.get(11).unwrap_or(0),
-            total_runs: row.get(12).unwrap_or(0),
-            total_balls_faced: row.get(13).unwrap_or(0),
-            strike_rate: row.get(14).unwrap_or_else(|_| "0.00".to_string()),
-            highest_score: row.get(15).unwrap_or(0),
-            fifties: row.get(16).unwrap_or(0),
-            wickets: row.get(17).unwrap_or(0),
-            overs_bowled: row.get(18).unwrap_or_else(|_| "0.0".to_string()),
-            runs_conceded: row.get(19).unwrap_or(0),
-            economy: row.get(20).unwrap_or_else(|_| "0.00".to_string()),
+            id: row.get::<String>(0).unwrap_or_default(),
+            team_id: row.get::<Option<String>>(1).ok().flatten(),
+            name: row.get::<String>(2).unwrap_or_default(),
+            slug: row.get::<String>(3).unwrap_or_default(),
+            role: row.get::<Option<String>>(4).ok().flatten(),
+            specialization: row.get::<Option<String>>(5).ok().flatten(),
+            dob: row.get::<Option<String>>(6).ok().flatten(),
+            style_batting: row.get::<Option<String>>(7).ok().flatten(),
+            style_bowling: row.get::<Option<String>>(8).ok().flatten(),
+            image: row.get::<Option<String>>(9).ok().flatten(),
+            bio: row.get::<Option<String>>(10).ok().flatten(),
+            matches_played: row.get::<i64>(11).unwrap_or(0) as i32,
+            total_runs: row.get::<i64>(12).unwrap_or(0) as i32,
+            total_balls_faced: row.get::<i64>(13).unwrap_or(0) as i32,
+            strike_rate: row.get::<String>(14).unwrap_or_else(|_| "0.00".to_string()),
+            highest_score: row.get::<i64>(15).unwrap_or(0) as i32,
+            fifties: row.get::<i64>(16).unwrap_or(0) as i32,
+            wickets: row.get::<i64>(17).unwrap_or(0) as i32,
+            overs_bowled: row.get::<String>(18).unwrap_or_else(|_| "0.0".to_string()),
+            runs_conceded: row.get::<i64>(19).unwrap_or(0) as i32,
+            economy: row.get::<String>(20).unwrap_or_else(|_| "0.00".to_string()),
             last_updated: None,
             created_at: None,
         });
@@ -192,23 +200,23 @@ pub async fn get_tournaments(State(state): State<Arc<AppState>>) -> impl IntoRes
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!("Failed to fetch tournaments: {:?}", e);
-            return (StatusCode::INTERNAL_SERVER_ERROR, "DB Error").into_response(),
+            return (StatusCode::INTERNAL_SERVER_ERROR, "DB Error").into_response();
         }
     };
 
     let mut tournament_map: std::collections::HashMap<String, Tournament> = std::collections::HashMap::new();
 
     while let Ok(Some(row)) = rows.next().await {
-        let id: String = row.get(0).unwrap_or_default();
+        let id: String = row.get::<String>(0).unwrap_or_default();
         
         let tournament = tournament_map.entry(id.clone()).or_insert_with(|| Tournament {
             id,
-            name: row.get(1).unwrap_or_default(),
-            slug: row.get(2).ok(),
-            start_date: row.get(3).ok(),
-            end_date: row.get(4).ok(),
-            description: row.get(5).ok(),
-            status: row.get(6).unwrap_or_else(|_| "scheduled".to_string()),
+            name: row.get::<String>(1).unwrap_or_default(),
+            slug: row.get::<Option<String>>(2).ok().flatten(),
+            start_date: row.get::<Option<String>>(3).ok().flatten(),
+            end_date: row.get::<Option<String>>(4).ok().flatten(),
+            description: row.get::<Option<String>>(5).ok().flatten(),
+            status: row.get::<String>(6).unwrap_or_else(|_| "scheduled".to_string()),
             created_at: None,
             teams: Some(Vec::new()),
         });
@@ -217,12 +225,12 @@ pub async fn get_tournaments(State(state): State<Arc<AppState>>) -> impl IntoRes
             if let Some(ref mut teams) = tournament.teams {
                 teams.push(Team {
                     id: team_id,
-                    name: row.get(10).unwrap_or_default(),
+                    name: row.get::<String>(10).unwrap_or_default(),
                     slug: "".to_string(), // Simplified
                     location: None,
-                    initials: row.get(11).ok(),
+                    initials: row.get::<Option<String>>(11).ok().flatten(),
                     description: None,
-                    image: row.get(12).ok(),
+                    image: row.get::<Option<String>>(12).ok().flatten(),
                     achievements: None,
                     played: 0,
                     won: 0,
@@ -526,7 +534,7 @@ pub async fn finish_match(
         let p_id: String = row.get(3).unwrap_or_default();
         let p_runs: i32 = row.get(6).unwrap_or(0);
         let p_balls: i32 = row.get(7).unwrap_or(0);
-        let p_is_not_out: i32 = row.get(11).unwrap_or(0);
+        let _p_is_not_out: i32 = row.get(11).unwrap_or(0);
         
         let _ = state.db.client.execute(
             "UPDATE players SET matches_played = matches_played + 1, total_runs = total_runs + ?, total_balls_faced = total_balls_faced + ?, highest_score = MAX(highest_score, ?), fifties = fifties + (CASE WHEN ? >= 50 THEN 1 ELSE 0 END) WHERE id = ?",
@@ -538,7 +546,7 @@ pub async fn finish_match(
     let mut bowling_rows = state.db.client.query("SELECT * FROM scorecard_bowling WHERE match_id = ?", libsql::params![payload.match_id.clone()]).await.unwrap();
     while let Ok(Some(row)) = bowling_rows.next().await {
         let p_id: String = row.get(3).unwrap_or_default();
-        let p_balls: i32 = row.get(6).unwrap_or(0);
+        let _p_balls: i32 = row.get(6).unwrap_or(0);
         let p_runs: i32 = row.get(7).unwrap_or(0);
         let p_wickets: i32 = row.get(8).unwrap_or(0);
         
@@ -607,29 +615,30 @@ pub async fn get_team_by_slug(
     State(state): State<Arc<AppState>>,
     Path(slug): Path<String>,
 ) -> impl IntoResponse {
-    let mut rows = match state.db.client.query("SELECT * FROM teams WHERE slug = ? LIMIT 1", libsql::params![slug]).await {
+    let sql = "SELECT id, name, slug, location, initials, description, image, achievements, played, won, lost, nrr, total_runs_scored, total_balls_faced, total_runs_conceded, total_balls_bowled FROM teams WHERE slug = ? LIMIT 1";
+    let mut rows = match state.db.client.query(sql, libsql::params![slug]).await {
         Ok(rows) => rows,
-        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "DB Error").into_response(),
+        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, format!("DB Error: {}", e)).into_response(),
     };
 
     if let Ok(Some(row)) = rows.next().await {
         let team = Team {
-            id: row.get(0).unwrap_or_default(),
-            name: row.get(1).unwrap_or_default(),
-            slug: row.get(2).unwrap_or_default(),
-            location: row.get(3).ok(),
-            initials: row.get(4).ok(),
-            description: row.get(5).ok(),
-            image: row.get(6).ok(),
-            achievements: row.get(7).ok(),
-            played: row.get(8).unwrap_or(0),
-            won: row.get(9).unwrap_or(0),
-            lost: row.get(10).unwrap_or(0),
-            nrr: row.get(11).unwrap_or_else(|_| "0.000".to_string()),
-            total_runs_scored: row.get(12).unwrap_or(0),
-            total_balls_faced: row.get(13).unwrap_or(0),
-            total_runs_conceded: row.get(14).unwrap_or(0),
-            total_balls_bowled: row.get(15).unwrap_or(0),
+            id: row.get::<String>(0).unwrap_or_default(),
+            name: row.get::<String>(1).unwrap_or_default(),
+            slug: row.get::<String>(2).unwrap_or_default(),
+            location: row.get::<Option<String>>(3).ok().flatten(),
+            initials: row.get::<Option<String>>(4).ok().flatten(),
+            description: row.get::<Option<String>>(5).ok().flatten(),
+            image: row.get::<Option<String>>(6).ok().flatten(),
+            achievements: row.get::<Option<String>>(7).ok().flatten(),
+            played: row.get::<i64>(8).unwrap_or(0) as i32,
+            won: row.get::<i64>(9).unwrap_or(0) as i32,
+            lost: row.get::<i64>(10).unwrap_or(0) as i32,
+            nrr: row.get::<String>(11).unwrap_or_else(|_| "0.000".to_string()),
+            total_runs_scored: row.get::<i64>(12).unwrap_or(0) as i32,
+            total_balls_faced: row.get::<i64>(13).unwrap_or(0) as i32,
+            total_runs_conceded: row.get::<i64>(14).unwrap_or(0) as i32,
+            total_balls_bowled: row.get::<i64>(15).unwrap_or(0) as i32,
             created_at: None,
         };
         return Json(team).into_response();
@@ -700,7 +709,7 @@ pub async fn get_scorecard_batting(
     
     let mut rows = match state.db.client.query(sql, libsql::params![match_id]).await {
         Ok(rows) => rows,
-        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "DB Error").into_response(),
+        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, format!("DB Error: {}", e)).into_response(),
     };
 
     let mut records = Vec::new();
@@ -737,7 +746,7 @@ pub async fn get_scorecard_bowling(
     
     let mut rows = match state.db.client.query(sql, libsql::params![match_id]).await {
         Ok(rows) => rows,
-        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "DB Error").into_response(),
+        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, format!("DB Error: {}", e)).into_response(),
     };
 
     let mut records = Vec::new();
@@ -763,36 +772,36 @@ pub async fn get_team_players(
     State(state): State<Arc<AppState>>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
-    let sql = "SELECT * FROM players WHERE team_id = ?";
+    let sql = "SELECT id, team_id, name, slug, role, specialization, dob, style_batting, style_bowling, image, bio, matches_played, total_runs, total_balls_faced, strike_rate, highest_score, fifties, wickets, overs_bowled, runs_conceded, economy FROM players WHERE team_id = ?";
     let mut rows = match state.db.client.query(sql, libsql::params![id]).await {
         Ok(rows) => rows,
-        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "DB Error").into_response(),
+        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, format!("DB Error: {}", e)).into_response(),
     };
 
     let mut players = Vec::new();
     while let Ok(Some(row)) = rows.next().await {
         players.push(Player {
-            id: row.get(0).unwrap_or_default(),
-            team_id: row.get(1).ok(),
-            name: row.get(2).unwrap_or_default(),
-            slug: row.get(3).unwrap_or_default(),
-            role: row.get(4).ok(),
-            specialization: row.get(5).ok(),
-            dob: row.get(6).ok(),
-            style_batting: row.get(7).ok(),
-            style_bowling: row.get(8).ok(),
-            image: row.get(9).ok(),
-            bio: row.get(10).ok(),
-            matches_played: row.get(11).unwrap_or(0),
-            total_runs: row.get(12).unwrap_or(0),
-            total_balls_faced: row.get(13).unwrap_or(0),
-            strike_rate: row.get(14).unwrap_or_else(|_| "0.00".to_string()),
-            highest_score: row.get(15).unwrap_or(0),
-            fifties: row.get(16).unwrap_or(0),
-            wickets: row.get(17).unwrap_or(0),
-            overs_bowled: row.get(18).unwrap_or_else(|_| "0.0".to_string()),
-            runs_conceded: row.get(19).unwrap_or(0),
-            economy: row.get(20).unwrap_or_else(|_| "0.00".to_string()),
+            id: row.get::<String>(0).unwrap_or_default(),
+            team_id: row.get::<Option<String>>(1).ok().flatten(),
+            name: row.get::<String>(2).unwrap_or_default(),
+            slug: row.get::<String>(3).unwrap_or_default(),
+            role: row.get::<Option<String>>(4).ok().flatten(),
+            specialization: row.get::<Option<String>>(5).ok().flatten(),
+            dob: row.get::<Option<String>>(6).ok().flatten(),
+            style_batting: row.get::<Option<String>>(7).ok().flatten(),
+            style_bowling: row.get::<Option<String>>(8).ok().flatten(),
+            image: row.get::<Option<String>>(9).ok().flatten(),
+            bio: row.get::<Option<String>>(10).ok().flatten(),
+            matches_played: row.get::<i64>(11).unwrap_or(0) as i32,
+            total_runs: row.get::<i64>(12).unwrap_or(0) as i32,
+            total_balls_faced: row.get::<i64>(13).unwrap_or(0) as i32,
+            strike_rate: row.get::<String>(14).unwrap_or_else(|_| "0.00".to_string()),
+            highest_score: row.get::<i64>(15).unwrap_or(0) as i32,
+            fifties: row.get::<i64>(16).unwrap_or(0) as i32,
+            wickets: row.get::<i64>(17).unwrap_or(0) as i32,
+            overs_bowled: row.get::<String>(18).unwrap_or_else(|_| "0.0".to_string()),
+            runs_conceded: row.get::<i64>(19).unwrap_or(0) as i32,
+            economy: row.get::<String>(20).unwrap_or_else(|_| "0.00".to_string()),
             last_updated: None,
             created_at: None,
         });
@@ -808,7 +817,7 @@ pub async fn get_team_matches(
     let sql = "SELECT * FROM matches WHERE team1_id = ? OR team2_id = ? ORDER BY date DESC";
     let mut rows = match state.db.client.query(sql, libsql::params![id.clone(), id]).await {
         Ok(rows) => rows,
-        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "DB Error").into_response(),
+        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, format!("DB Error: {}", e)).into_response(),
     };
 
     let mut matches = Vec::new();
@@ -851,7 +860,7 @@ pub async fn get_team_scorecards_batting(
     
     let mut rows = match state.db.client.query(sql, libsql::params![id]).await {
         Ok(rows) => rows,
-        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "DB Error").into_response(),
+        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, format!("DB Error: {}", e)).into_response(),
     };
 
     let mut records = Vec::new();
@@ -888,7 +897,7 @@ pub async fn get_team_scorecards_bowling(
     
     let mut rows = match state.db.client.query(sql, libsql::params![id]).await {
         Ok(rows) => rows,
-        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "DB Error").into_response(),
+        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, format!("DB Error: {}", e)).into_response(),
     };
 
     let mut records = Vec::new();
@@ -1119,4 +1128,25 @@ pub async fn get_admin_stats(
         "matches": matches_count,
         "revenue": "₹45K" // Kept hardcoded as per plan until revenue table exists
     }))
+}
+
+pub async fn health_check(
+    State(state): State<Arc<AppState>>,
+) -> impl IntoResponse {
+    // Verify DB connectivity with a simple query
+    match state.db.client.query("SELECT 1", ()).await {
+        Ok(_) => Json(serde_json::json!({
+            "status": "ok",
+            "database": "connected",
+            "timestamp": chrono::Utc::now().to_rfc3339()
+        })).into_response(),
+        Err(e) => {
+            tracing::error!("Health check failed - DB error: {:?}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
+                "status": "error",
+                "database": format!("failed: {}", e),
+                "timestamp": chrono::Utc::now().to_rfc3339()
+            }))).into_response()
+        }
+    }
 }

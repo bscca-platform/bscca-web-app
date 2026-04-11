@@ -16,7 +16,8 @@ export async function apiFetch<T>(endpoint: string, options?: RequestInit): Prom
     });
 
     if (!response.ok) {
-        throw new Error(`API Error: ${response.statusText}`);
+        const errorText = await response.text();
+        throw new Error(`API Error: ${response.statusText} ${errorText}`);
     }
 
     // Handle empty responses (e.g. update/delete return 200 with no body)

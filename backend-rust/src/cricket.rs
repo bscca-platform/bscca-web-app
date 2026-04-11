@@ -20,6 +20,7 @@ pub fn calculate_nrr(
     format!("{}{:.3}", sign, nrr)
 }
 
+#[allow(dead_code)]
 pub fn balls_to_overs_string(balls: i32) -> String {
     let overs = balls / 6;
     let rem = balls % 6;
