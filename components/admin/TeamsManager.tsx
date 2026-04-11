@@ -281,7 +281,7 @@ function TeamEditModal({ isOpen, onClose, team, formData, setFormData, onSave, o
                             <label className={labelClass}>Team Logo</label>
                             <div className="flex flex-col sm:flex-row gap-4 items-center">
                                 <div className="w-20 h-20 bg-white/5 rounded-xl flex items-center justify-center overflow-hidden relative border border-white/10">
-                                    {formData.image ? (
+                                    {formData.image && /^https?:\/\/.+\..+/.test(formData.image) ? (
                                         <img src={formData.image} alt="Logo" className="w-full h-full object-cover" />
                                     ) : (
                                         <Camera className="w-6 h-6 text-white/30" />

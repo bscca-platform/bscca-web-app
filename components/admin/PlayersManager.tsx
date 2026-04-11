@@ -296,7 +296,7 @@ function PlayerDraftModal({ isOpen, onClose, player, teams, formData, setFormDat
                                         <label className={labelClass}>Player Photo</label>
                                         <div className="flex gap-4 items-center">
                                             <div className="w-16 h-16 bg-white/5 rounded-xl flex items-center justify-center overflow-hidden relative border border-white/10 shrink-0">
-                                                {formData.image ? <img src={formData.image} alt="Avatar" className="w-full h-full object-cover" /> : <Camera className="w-5 h-5 text-white/30" />}
+                                                {formData.image && /^https?:\/\/.+\..+/.test(formData.image) ? <img src={formData.image} alt="Avatar" className="w-full h-full object-cover" /> : <Camera className="w-5 h-5 text-white/30" />}
                                                 {uploading && <div className="absolute inset-0 bg-slate-950/90 flex items-center justify-center"><div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" /></div>}
                                             </div>
                                             <div className="flex-1 space-y-2">

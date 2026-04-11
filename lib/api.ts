@@ -19,7 +19,14 @@ export async function apiFetch<T>(endpoint: string, options?: RequestInit): Prom
         throw new Error(`API Error: ${response.statusText}`);
     }
 
-    return response.json();
+    // Handle empty responses (e.g. update/delete return 200 with no body)
+    const text = await response.text();
+    if (!text) return {} as T;
+    try {
+        return JSON.parse(text);
+    } catch {
+        return {} as T;
+    }
 }
 
 export const api = {
@@ -57,11 +64,17 @@ export const api = {
     uploadFile: async (file: File) => {
         const formData = new FormData();
         formData.append('file', file);
-        return apiFetch<{ url: string }>('/upload', {
+        const response = await fetch(`${API_BASE_URL}/upload`, {
             method: 'POST',
+            headers: {
+                'X-API-Key': process.env.NEXT_PUBLIC_ADMIN_API_KEY || 'bscca-secret-786',
+            },
             body: formData,
-            headers: {}, // Let the browser set Content-Type with boundary
         });
+        if (!response.ok) {
+            throw new Error(`API Error: ${response.statusText}`);
+        }
+        return response.json();
     },
     // SSE will be handled in a custom hook
 };
