@@ -9,10 +9,20 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface TopPlayersScrollProps {
     players: any[];
+    teams?: any[];
 }
 
-export default function TopPlayersScroll({ players }: TopPlayersScrollProps) {
+export default function TopPlayersScroll({ players, teams = [] }: TopPlayersScrollProps) {
     const scrollRef = useRef<HTMLDivElement>(null);
+
+    // Build team ID → slug map
+    const teamSlugMap: Record<string, string> = {};
+    teams.forEach((t: any) => { teamSlugMap[t.id] = t.slug; });
+
+    const getPlayerHref = (player: any) => {
+        const teamSlug = player.team_id ? (teamSlugMap[player.team_id] || "freeagent") : "freeagent";
+        return `/players/${teamSlug}/${player.slug}`;
+    };
 
     const scroll = (dir: "left" | "right") => {
         if (!scrollRef.current) return;
@@ -35,7 +45,7 @@ export default function TopPlayersScroll({ players }: TopPlayersScrollProps) {
             </div>
             <div ref={scrollRef} className="flex gap-5 overflow-x-auto pb-4 scrollbar-hide snap-x scroll-smooth">
                 {players.map((player) => (
-                    <Link key={player.id} href={`/players/${player.slug}`} className="snap-start flex-shrink-0 group">
+                    <Link key={player.id} href={getPlayerHref(player)} className="snap-start flex-shrink-0 group">
                         <Card className="w-[180px] sm:w-[220px] rounded-2xl border border-border/60 bg-white shadow-sm hover:shadow-lg hover:border-accent/30 transition-all duration-300 overflow-hidden">
                             <CardContent className="p-5 flex flex-col items-center text-center gap-4">
                                 {/* Player Avatar */}

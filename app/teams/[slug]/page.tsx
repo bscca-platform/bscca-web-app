@@ -222,7 +222,7 @@ export default async function TeamPage({ params }: TeamPageProps) {
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 {squad?.map((player: any, i: any) => (
-                                    <Link key={i} href={`/players/${player.slug}`} className="bg-white border border-border/60 rounded-xl p-4 flex items-center gap-4 hover:border-accent/40 hover:shadow-sm transition-all group">
+                                    <Link key={i} href={`/players/${slug}/${player.slug}`} className="bg-white border border-border/60 rounded-xl p-4 flex items-center gap-4 hover:border-accent/40 hover:shadow-sm transition-all group">
                                         <div className="w-10 h-10 bg-muted rounded-xl flex items-center justify-center font-semibold text-foreground group-hover:bg-accent group-hover:text-white transition-colors overflow-hidden">
                                             {player.image ? (
                                                 <img src={player.image} alt={player.name} className="w-full h-full object-cover" />

@@ -11,12 +11,13 @@ import DelayedPageLoader from "@/components/ui/DelayedPageLoader";
 
 interface PlayerPageProps {
     params: Promise<{
+        teamSlug: string;
         slug: string;
     }>;
 }
 
 export default function PlayerPage({ params }: PlayerPageProps) {
-    const { slug } = use(params);
+    const { teamSlug, slug } = use(params);
     const { player, loading, error } = usePlayer(slug);
 
     if (error) {
@@ -29,6 +30,9 @@ export default function PlayerPage({ params }: PlayerPageProps) {
         { label: "Highest", value: (player.highest_score || 0).toString(), icon: <Target className="w-4 h-4" /> },
         { label: "Fifties", value: (player.fifties || 0).toString(), icon: <Award className="w-4 h-4" /> }
     ] : [];
+
+    const teamName = player?.teams?.name || "Free Agent";
+    const isTeamKnown = teamSlug !== "freeagent";
 
     return (
         <DelayedPageLoader isLoading={loading}>
@@ -46,7 +50,7 @@ export default function PlayerPage({ params }: PlayerPageProps) {
 
                                 <div className="flex flex-wrap justify-center md:justify-start gap-2">
                                     <Badge className="bg-primary text-white font-medium px-3 py-1 rounded-full text-xs border-none">
-                                        {player.teams?.name || "Independent"}
+                                        {teamName}
                                     </Badge>
                                     <Badge variant="outline" className="font-medium px-3 py-1 rounded-full text-xs">
                                         {player.role || player.specialization || "Player"}
@@ -147,17 +151,21 @@ export default function PlayerPage({ params }: PlayerPageProps) {
                                         <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Primary Affiliation</span>
                                         <div className="flex items-center gap-4">
                                             <div className="w-14 h-14 bg-primary text-white rounded-xl flex items-center justify-center text-2xl font-bold">
-                                                {(player.teams?.name || "I")[0]}
+                                                {(teamName)[0]}
                                             </div>
                                             <div>
-                                                <div className="text-lg font-semibold text-foreground">{player.teams?.name || "Independent"}</div>
-                                                <div className="text-[10px] text-muted-foreground font-medium">Official BSCCA Franchise</div>
+                                                <div className="text-lg font-semibold text-foreground">{teamName}</div>
+                                                <div className="text-[10px] text-muted-foreground font-medium">
+                                                    {isTeamKnown ? "Official BSCCA Franchise" : "Unaffiliated Player"}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                    <Link href={`/teams/${player.teams?.slug || '#'}`} className="block w-full py-3 bg-primary text-white text-center font-medium text-sm rounded-xl hover:bg-primary/90 transition-all">
-                                        View Team
-                                    </Link>
+                                    {isTeamKnown && (
+                                        <Link href={`/teams/${teamSlug}`} className="block w-full py-3 bg-primary text-white text-center font-medium text-sm rounded-xl hover:bg-primary/90 transition-all">
+                                            View Team
+                                        </Link>
+                                    )}
                                 </div>
 
                                 {/* Social */}

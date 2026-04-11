@@ -113,7 +113,7 @@ export default function Home() {
 
           <TeamsScroll teams={sortedTeams} />
 
-          <TopPlayersScroll players={topPlayers.length > 0 ? topPlayers : []} />
+          <TopPlayersScroll players={topPlayers.length > 0 ? topPlayers : []} teams={teams} />
         </div>
 
         {/* Right Column */}
