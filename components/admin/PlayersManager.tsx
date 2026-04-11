@@ -131,7 +131,10 @@ export default function PlayersManager() {
                 setIsModalOpen(false);
             }
         } catch (err: any) {
-            alert(err.message);
+            const msg = err.message?.includes('UNIQUE constraint') 
+                ? 'A player with this slug already exists. Please change the slug.'
+                : err.message;
+            alert(msg);
         }
     };
 
@@ -279,7 +282,13 @@ function PlayerDraftModal({ isOpen, onClose, player, teams, formData, setFormDat
                                 <div className="space-y-4">
                                     <div className="space-y-1.5">
                                         <label className={labelClass}>Full Name</label>
-                                        <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className={inputClass} placeholder="e.g. Rohit Sharma" />
+                                        <input type="text" value={formData.name} onChange={(e) => {
+                                            const name = e.target.value;
+                                            const autoSlug = !editingPlayer
+                                                ? name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Math.random().toString(36).slice(2, 6)
+                                                : formData.slug;
+                                            setFormData({ ...formData, name, slug: autoSlug });
+                                        }} className={inputClass} placeholder="e.g. Rohit Sharma" />
                                     </div>
                                     <div className="space-y-1.5">
                                         <label className={labelClass}>Slug</label>

@@ -238,7 +238,13 @@ function TeamEditModal({ isOpen, onClose, team, formData, setFormData, onSave, o
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-1.5">
                                 <label className={labelClass}>Team Name</label>
-                                <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className={inputClass} placeholder="e.g. Beltala Tigers" />
+                                <input type="text" value={formData.name} onChange={(e) => {
+                                    const name = e.target.value;
+                                    const autoSlug = !editingTeam
+                                        ? name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Math.random().toString(36).slice(2, 6)
+                                        : formData.slug;
+                                    setFormData({ ...formData, name, slug: autoSlug });
+                                }} className={inputClass} placeholder="e.g. Beltala Tigers" />
                             </div>
                             <div className="space-y-1.5">
                                 <label className={labelClass}>Slug</label>
