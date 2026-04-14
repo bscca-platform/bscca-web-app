@@ -284,7 +284,7 @@ function PlayerDraftModal({ isOpen, onClose, player, teams, formData, setFormDat
                                         <label className={labelClass}>Full Name</label>
                                         <input type="text" value={formData.name} onChange={(e) => {
                                             const name = e.target.value;
-                                            const autoSlug = !editingPlayer
+                                            const autoSlug = !player
                                                 ? name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Math.random().toString(36).slice(2, 6)
                                                 : formData.slug;
                                             setFormData({ ...formData, name, slug: autoSlug });
