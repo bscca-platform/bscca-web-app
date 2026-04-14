@@ -1,52 +1,99 @@
-"use client";
-
+import { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { useMatch } from "@/hooks/useMatch";
-import { useTeams } from "@/hooks/useTeams";
+import { api } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Calendar, Clock, Trophy, Shield, ArrowLeft, Play, Info } from "lucide-react";
 import Link from "next/link";
+import JsonLd from "@/components/SEO/JsonLd";
+import Breadcrumbs from "@/components/SEO/Breadcrumbs";
 
 interface MatchDetailPageProps {
-    params: {
+    params: Promise<{
         slug: string;
-    };
+    }>;
 }
 
-export default function MatchDetailPage({ params }: MatchDetailPageProps) {
-    const { match, loading, error } = useMatch(params.slug);
-    const { teams } = useTeams();
+export async function generateMetadata({ params }: MatchDetailPageProps): Promise<Metadata> {
+    const { slug } = await params;
+    try {
+        const match = await api.getMatchBySlug(slug);
+        if (!match) return { title: "Match Not Found" };
 
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-background flex items-center justify-center">
-                <div className="w-10 h-10 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-            </div>
-        );
+        return {
+            title: `${match.t1} vs ${match.t2} - Match Details & Highlights`,
+            description: `Official details for ${match.t1} vs ${match.t2} at ${match.venue}. Get scores, highlights, and match summary on BSCCA.`,
+            openGraph: {
+                title: `${match.t1} vs ${match.t2} | BSCCA Cricket`,
+                description: `Live updates and highlights for ${match.t1} vs ${match.t2}.`,
+                images: match.highlights_url ? [{ url: match.highlights_url }] : [],
+            },
+        };
+    } catch (err) {
+        return { title: "Match Details" };
     }
+}
 
-    if (!match || error) {
+export default async function MatchDetailPage({ params }: MatchDetailPageProps) {
+    const { slug } = await params;
+    
+    let match, teams;
+    try {
+        [match, teams] = await Promise.all([
+            api.getMatchBySlug(slug),
+            api.getTeams()
+        ]);
+    } catch (err) {
         notFound();
     }
 
-    const team1Data = teams.find(t => t.id === match.team1_id);
-    const team2Data = teams.find(t => t.id === match.team2_id);
+    if (!match || !teams) {
+        notFound();
+    }
+
+    const team1Data = teams.find((t: any) => t.id === match.team1_id);
+    const team2Data = teams.find((t: any) => t.id === match.team2_id);
 
     // Proxy the video URL if it's from Hugging Face
     const videoUrl = match.highlights_url?.startsWith('https://huggingface.co/') 
         ? `/api/proxy-image?url=${encodeURIComponent(match.highlights_url)}` 
         : match.highlights_url;
 
+    const jsonLd = {
+        "@context": "https://schema.org",
+        "@type": "SportsEvent",
+        "name": `${match.t1} vs ${match.t2}`,
+        "description": `${match.t1} vs ${match.t2} match at ${match.venue}`,
+        "startDate": match.date,
+        "location": {
+            "@type": "Place",
+            "name": match.venue,
+            "address": "Beltala, West Bengal, India"
+        },
+        "competitor": [
+            { "@type": "SportsTeam", "name": match.t1 },
+            { "@type": "SportsTeam", "name": match.t2 }
+        ],
+        "image": videoUrl,
+        "eventStatus": match.status === 'finished' ? "https://schema.org/EventPostponed" : "https://schema.org/EventScheduled"
+    };
+
     return (
         <div className="min-h-screen bg-background pb-20">
+            <JsonLd data={jsonLd} />
             {/* Hero */}
-            <section className="relative overflow-hidden bg-primary py-16 sm:py-24">
+            <section className="relative overflow-hidden bg-primary py-12 sm:py-20">
+                <div className="max-w-7xl mx-auto px-6 relative z-10 mb-8">
+                    <Breadcrumbs items={[
+                        { label: "Matches", href: "/matches" },
+                        { label: `${match.t1} vs ${match.t2}`, href: `/matches/${slug}` }
+                    ]} />
+                </div>
                 <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '32px 32px' }}></div>
                 <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-background to-transparent"></div>
 
                 <div className="max-w-7xl mx-auto px-6 relative z-10">
-                    <Link href="/matches" className="inline-flex items-center gap-2 text-sm text-white/60 hover:text-white transition-colors mb-10">
+                    <Link href="/matches" className="inline-flex items-center gap-2 text-sm text-white/60 hover:text-white transition-colors mb-6">
                         <ArrowLeft className="w-4 h-4" /> Back to Schedule
                     </Link>
 

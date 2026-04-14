@@ -1,5 +1,8 @@
+import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { api } from "@/lib/api";
+import JsonLd from "@/components/SEO/JsonLd";
+import Breadcrumbs from "@/components/SEO/Breadcrumbs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users, Trophy, TrendingUp, Zap, Target, Award } from "lucide-react";
@@ -10,6 +13,26 @@ interface TeamPageProps {
     params: Promise<{
         slug: string;
     }>;
+}
+
+export async function generateMetadata({ params }: TeamPageProps): Promise<Metadata> {
+    const { slug } = await params;
+    try {
+        const team = await api.getTeamBySlug(slug);
+        if (!team) return { title: "Team Not Found" };
+
+        return {
+            title: `${team.name} - Official Profile`,
+            description: `Official profile of ${team.name} (${team.initials}) based in ${team.location}. Get player stats, match history, and achievements for this BSCCA franchise.`,
+            openGraph: {
+                title: `${team.name} | BSCCA Team Profile`,
+                description: `Official stats and squad for ${team.name}.`,
+                images: team.image ? [{ url: team.image }] : [],
+            },
+        };
+    } catch (err) {
+        return { title: "Team Profile" };
+    }
 }
 
 export async function generateStaticParams() {
@@ -153,10 +176,33 @@ export default async function TeamPage({ params }: TeamPageProps) {
         }
     }
 
+    const jsonLd = {
+        "@context": "https://schema.org",
+        "@type": "SportsTeam",
+        "name": team.name,
+        "alternateName": team.initials,
+        "description": team.description || `The official BSCCA franchise representing ${team.location}.`,
+        "memberOf": {
+            "@type": "SportsOrganization",
+            "name": "BSCCA",
+            "url": "https://bscca.bandhannova.in"
+        },
+        "location": {
+            "@type": "Place",
+            "name": team.location
+        },
+        "image": team.image
+    };
+
     return (
         <div className="min-h-screen bg-background pb-20">
+            <JsonLd data={jsonLd} />
+            
             {/* Team Hero */}
-            <section className="relative overflow-hidden bg-primary py-16 sm:py-24">
+            <section className="relative overflow-hidden bg-primary py-12 sm:py-20">
+                <div className="max-w-7xl mx-auto px-6 relative z-10">
+                    <Breadcrumbs items={[{ label: "Teams", href: "/teams" }, { label: team.name, href: `/teams/${team.slug}` }]} />
+                </div>
                 <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '32px 32px' }}></div>
                 <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-background to-transparent"></div>
 
@@ -175,7 +221,7 @@ export default async function TeamPage({ params }: TeamPageProps) {
 
                     <div className="w-48 h-48 md:w-64 md:h-64 bg-white/10 backdrop-blur-sm rounded-3xl border border-white/10 flex items-center justify-center text-6xl md:text-8xl font-bold text-white/80 shadow-2xl overflow-hidden">
                         {team.image ? (
-                            <img src={team.image} alt={team.initials} className="w-full h-full object-cover" />
+                            <img src={team.image} alt={`${team.name} official logo - BSCCA Cricket`} className="w-full h-full object-cover" />
                         ) : (
                             team.initials
                         )}

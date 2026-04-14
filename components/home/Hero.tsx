@@ -5,7 +5,7 @@ export default function Hero() {
     return (
         <section className="relative rounded-none sm:rounded-t-[40px] min-h-[420px] sm:min-h-[520px] flex items-center justify-center overflow-hidden text-white px-6 py-24 text-center">
             {/* Background image */}
-            <img src="/hero-bg.png" alt="" className="absolute inset-0 w-full h-full object-cover" />
+            <img src="/hero-bg.png" alt="BSCCA Beltala Cricket Ground Stadium Background" className="absolute inset-0 w-full h-full object-cover" />
             {/* Dark overlay for text readability */}
             <div className="absolute inset-0 bg-primary/70"></div>
             {/* Subtle dot pattern */}
