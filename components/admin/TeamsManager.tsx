@@ -240,7 +240,7 @@ function TeamEditModal({ isOpen, onClose, team, formData, setFormData, onSave, o
                                 <label className={labelClass}>Team Name</label>
                                 <input type="text" value={formData.name} onChange={(e) => {
                                     const name = e.target.value;
-                                    const autoSlug = !editingTeam
+                                    const autoSlug = !team
                                         ? name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Math.random().toString(36).slice(2, 6)
                                         : formData.slug;
                                     setFormData({ ...formData, name, slug: autoSlug });
