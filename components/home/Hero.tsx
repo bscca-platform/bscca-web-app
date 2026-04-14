@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 
 export default function Hero() {
     return (
-        <section className="relative rounded-2xl min-h-[420px] sm:min-h-[520px] flex items-center justify-center overflow-hidden text-white px-6 py-24 text-center">
+        <section className="relative rounded-none sm:rounded-t-[40px] min-h-[420px] sm:min-h-[520px] flex items-center justify-center overflow-hidden text-white px-6 py-24 text-center">
             {/* Background image */}
             <img src="/hero-bg.png" alt="" className="absolute inset-0 w-full h-full object-cover" />
             {/* Dark overlay for text readability */}
@@ -18,7 +18,7 @@ export default function Hero() {
                 <Badge className="bg-white/10 text-white/90 border-white/20 backdrop-blur-sm font-medium px-4 py-1.5 text-xs tracking-wide rounded-full">
                     Est. 2026 · Season 01
                 </Badge>
-                <h1 className="text-4xl sm:text-6xl md:text-7xl font-bold tracking-tight leading-[1.05]">
+                <h1 className="text-4xl sm:text-6xl text-white/90 md:text-7xl font-bold tracking-tight leading-[1.05]">
                     Beltala Supreme Council of Cricket Authority
                 </h1>
                 <p className="text-base sm:text-lg max-w-xl mx-auto text-white/70 leading-relaxed font-normal">

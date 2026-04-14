@@ -49,7 +49,7 @@ export default function TopPlayersScroll({ players, teams = [] }: TopPlayersScro
                         <Card className="w-[180px] sm:w-[220px] rounded-2xl border border-border/60 bg-white shadow-sm hover:shadow-lg hover:border-accent/30 transition-all duration-300 overflow-hidden">
                             <CardContent className="p-5 flex flex-col items-center text-center gap-4">
                                 {/* Player Avatar */}
-                                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-primary flex items-center justify-center text-xl sm:text-2xl font-bold text-white group-hover:scale-105 transition-transform overflow-hidden">
+                                <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl bg-primary flex items-center justify-center text-2xl sm:text-3xl font-bold text-white group-hover:scale-105 transition-transform overflow-hidden shadow-lg shadow-primary/10">
                                     {player.image ? (
                                         <img src={player.image} alt={player.name} className="w-full h-full object-cover" />
                                     ) : (

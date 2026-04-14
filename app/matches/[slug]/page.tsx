@@ -1,8 +1,11 @@
+"use client";
+
 import { notFound } from "next/navigation";
-import { UPCOMING_MATCHES, TEAMS } from "@/lib/data";
+import { useMatch } from "@/hooks/useMatch";
+import { useTeams } from "@/hooks/useTeams";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Calendar, Clock, Trophy, Shield, ArrowLeft } from "lucide-react";
+import { MapPin, Calendar, Clock, Trophy, Shield, ArrowLeft, Play, Info } from "lucide-react";
 import Link from "next/link";
 
 interface MatchDetailPageProps {
@@ -12,14 +15,28 @@ interface MatchDetailPageProps {
 }
 
 export default function MatchDetailPage({ params }: MatchDetailPageProps) {
-    const match = UPCOMING_MATCHES.find((m) => m.slug === params.slug);
+    const { match, loading, error } = useMatch(params.slug);
+    const { teams } = useTeams();
 
-    if (!match) {
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-background flex items-center justify-center">
+                <div className="w-10 h-10 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+            </div>
+        );
+    }
+
+    if (!match || error) {
         notFound();
     }
 
-    const team1 = TEAMS.find(t => t.name.includes(match.t1) || t.initials === match.i1);
-    const team2 = TEAMS.find(t => t.name.includes(match.t2) || t.initials === match.i2);
+    const team1Data = teams.find(t => t.id === match.team1_id);
+    const team2Data = teams.find(t => t.id === match.team2_id);
+
+    // Proxy the video URL if it's from Hugging Face
+    const videoUrl = match.highlights_url?.startsWith('https://huggingface.co/') 
+        ? `/api/proxy-image?url=${encodeURIComponent(match.highlights_url)}` 
+        : match.highlights_url;
 
     return (
         <div className="min-h-screen bg-background pb-20">
@@ -35,20 +52,34 @@ export default function MatchDetailPage({ params }: MatchDetailPageProps) {
 
                     <div className="flex flex-col md:flex-row items-center justify-between gap-12">
                         <div className="flex flex-col items-center gap-4 flex-1">
-                            <div className="w-32 h-32 sm:w-40 sm:h-40 bg-white/10 backdrop-blur-sm rounded-3xl border border-white/10 flex items-center justify-center text-4xl sm:text-5xl font-bold text-white shadow-xl">
-                                {match.i1}
+                            <div className="w-32 h-32 sm:w-40 sm:h-40 bg-white/10 backdrop-blur-sm rounded-3xl border border-white/10 flex items-center justify-center text-4xl sm:text-5xl font-bold text-white shadow-xl overflow-hidden">
+                                {team1Data?.image ? (
+                                    <img src={`/api/proxy-image?url=${encodeURIComponent(team1Data.image)}`} alt={match.t1} className="w-full h-full object-cover" />
+                                ) : (
+                                    match.i1
+                                )}
                             </div>
                             <h2 className="text-2xl sm:text-4xl font-bold text-white text-center">{match.t1}</h2>
                         </div>
 
                         <div className="flex flex-col items-center gap-3">
                             <span className="text-5xl sm:text-7xl font-bold text-white/10">vs</span>
-                            <Badge className="bg-white/10 text-white border-white/20 font-medium px-4 py-1.5 rounded-full text-xs backdrop-blur-sm">Upcoming</Badge>
+                            <Badge className={`font-medium px-4 py-1.5 rounded-full text-xs backdrop-blur-sm uppercase ${
+                                match.status === 'live' ? 'bg-red-500/20 text-red-400 border-red-500/30' : 
+                                match.status === 'finished' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
+                                'bg-white/10 text-white border-white/20'
+                            }`}>
+                                {match.status}
+                            </Badge>
                         </div>
 
                         <div className="flex flex-col items-center gap-4 flex-1">
-                            <div className="w-32 h-32 sm:w-40 sm:h-40 bg-white/10 backdrop-blur-sm rounded-3xl border border-white/10 flex items-center justify-center text-4xl sm:text-5xl font-bold text-white shadow-xl">
-                                {match.i2}
+                            <div className="w-32 h-32 sm:w-40 sm:h-40 bg-white/10 backdrop-blur-sm rounded-3xl border border-white/10 flex items-center justify-center text-4xl sm:text-5xl font-bold text-white shadow-xl overflow-hidden">
+                                {team2Data?.image ? (
+                                    <img src={`/api/proxy-image?url=${encodeURIComponent(team2Data.image)}`} alt={match.t2} className="w-full h-full object-cover" />
+                                ) : (
+                                    match.i2
+                                )}
                             </div>
                             <h2 className="text-2xl sm:text-4xl font-bold text-white text-center">{match.t2}</h2>
                         </div>
@@ -60,10 +91,10 @@ export default function MatchDetailPage({ params }: MatchDetailPageProps) {
             <div className="max-w-7xl mx-auto px-6 -mt-8 relative z-20">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                     {/* Date/Time/Venue */}
-                    <Card className="rounded-2xl border border-border/60 bg-white shadow-lg p-6 space-y-5">
+                    <Card className="rounded-2xl border border-border/60 bg-white shadow-lg p-6 flex flex-col justify-center space-y-6">
                         {[
-                            { icon: Calendar, label: "Match Date", value: `${match.date}, 2024` },
-                            { icon: Clock, label: "Start Time", value: match.time },
+                            { icon: Calendar, label: "Match Date", value: match.date },
+                            { icon: Clock, label: "Start Time", value: match.time || "TBD" },
                             { icon: MapPin, label: "Stadium", value: match.venue },
                         ].map((item, i) => (
                             <div key={i} className="flex items-center gap-4 group">
@@ -78,42 +109,76 @@ export default function MatchDetailPage({ params }: MatchDetailPageProps) {
                         ))}
                     </Card>
 
-                    {/* Team 1 Squad */}
-                    <Card className="rounded-2xl border border-border/60 bg-primary text-white shadow-lg p-6 overflow-hidden relative">
-                        <div className="absolute -right-6 -bottom-6 text-7xl font-bold opacity-5">{match.i1}</div>
-                        <h3 className="text-lg font-semibold mb-4 pb-3 border-b border-white/10">{match.t1} Squad</h3>
-                        <ul className="space-y-2.5 relative z-10">
-                            {team1?.squad?.map((player, i) => (
-                                <li key={i} className="flex items-center gap-2.5 text-sm font-medium text-white/80 hover:text-white transition-colors group cursor-pointer">
-                                    <Shield className="w-3.5 h-3.5 text-accent/60 group-hover:text-accent" /> {player}
-                                </li>
-                            )) || <li className="text-sm text-white/40">Squad not announced</li>}
-                        </ul>
-                    </Card>
-
-                    {/* Team 2 Squad */}
-                    <Card className="rounded-2xl border border-border/60 bg-primary text-white shadow-lg p-6 overflow-hidden relative">
-                        <div className="absolute -right-6 -bottom-6 text-7xl font-bold opacity-5">{match.i2}</div>
-                        <h3 className="text-lg font-semibold mb-4 pb-3 border-b border-white/10">{match.t2} Squad</h3>
-                        <ul className="space-y-2.5 relative z-10">
-                            {team2?.squad?.map((player, i) => (
-                                <li key={i} className="flex items-center gap-2.5 text-sm font-medium text-white/80 hover:text-white transition-colors group cursor-pointer">
-                                    <Shield className="w-3.5 h-3.5 text-accent/60 group-hover:text-accent" /> {player}
-                                </li>
-                            )) || <li className="text-sm text-white/40">Squad not announced</li>}
-                        </ul>
+                    {/* Result Card (If finished) */}
+                    <Card className="rounded-2xl border border-border/60 bg-emerald-600 text-white shadow-lg p-8 md:col-span-2 overflow-hidden relative">
+                         <div className="relative z-10 flex flex-col h-full justify-center text-center sm:text-left">
+                            <h3 className="text-sm font-medium uppercase tracking-[0.2em] text-white/60 mb-2">Match Result</h3>
+                            <div className="text-3xl sm:text-5xl font-black mb-4">
+                                {match.status === 'finished' ? match.result_text : 'Match Preview'}
+                            </div>
+                            <div className="flex flex-wrap gap-4 items-center justify-center sm:justify-start">
+                                <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full backdrop-blur-sm">
+                                    <Trophy className="w-4 h-4 text-emerald-300" />
+                                    <span className="text-sm font-bold uppercase tracking-wider">{match.winner_id ? 'Winner Announced' : 'Fixture Pending'}</span>
+                                </div>
+                                {match.pom_text && (
+                                    <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full backdrop-blur-sm">
+                                        <Shield className="w-4 h-4 text-emerald-300" />
+                                        <span className="text-sm font-medium">{match.pom_text}</span>
+                                    </div>
+                                )}
+                            </div>
+                         </div>
+                         <div className="absolute top-0 right-0 p-8 opacity-10">
+                            <Trophy className="w-48 h-48 -mr-12 -mt-12" />
+                         </div>
                     </Card>
                 </div>
 
-                {/* Preview */}
+                {/* Highlights Section */}
+                {match.highlights_url && (
+                    <Card className="rounded-3xl border border-border/60 bg-white shadow-xl mt-8 overflow-hidden">
+                        <div className="flex items-center justify-between px-8 py-6 border-b border-border/50 bg-slate-50">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-red-500 rounded-lg">
+                                    <Play className="w-5 h-5 text-white fill-current" />
+                                </div>
+                                <h3 className="text-2xl font-bold text-foreground">Match Highlights</h3>
+                            </div>
+                            <div className="flex items-center gap-2 text-red-500 font-bold text-sm">
+                                <span className="relative flex h-3 w-3">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                                </span>
+                                4K ULTRA HD
+                            </div>
+                        </div>
+                        <CardContent className="p-0 bg-slate-950 aspect-video relative group">
+                            <video 
+                                controls 
+                                className="w-full h-full"
+                                poster={team1Data?.image || team2Data?.image || "/hero-bg.jpg"}
+                            >
+                                <source src={videoUrl} type="video/mp4" />
+                                Your browser does not support the video tag.
+                            </video>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Preview / Detailed Info */}
                 <Card className="rounded-2xl border border-border/60 bg-white shadow-sm mt-8 overflow-hidden">
                     <div className="flex items-center justify-between px-6 py-4 border-b border-border/50 bg-muted/30">
-                        <h3 className="text-xl font-semibold text-foreground">Match Preview</h3>
-                        <Trophy className="w-6 h-6 text-accent" />
+                        <h3 className="text-xl font-semibold text-foreground">Match Summary</h3>
+                        <Info className="w-6 h-6 text-accent" />
                     </div>
                     <CardContent className="p-6 sm:p-10">
-                        <p className="text-base text-muted-foreground leading-[1.8]">
-                            Both teams are coming off strong performances in their previous matches. {match.t1} will look to leverage their dominant batting lineup, while {match.t2} will rely on their disciplined bowling attack. The pitch at {match.venue} is expected to favor both batsmen and bowlers, promising a thrilling encounter.
+                        <p className="text-lg text-muted-foreground leading-[1.8] font-medium">
+                            {match.status === 'finished' ? (
+                                <>This was an incredible encounter between {match.t1} and {match.t2}. {match.result_text}. The match was played with great spirit and provided an unforgettable experience for the fans at {match.venue}.</>
+                            ) : (
+                                <>Both teams are coming off strong performances in their previous matches. {match.t1} will look to leverage their dominant batting lineup, while {match.t2} will rely on their disciplined bowling attack. The pitch at {match.venue} is expected to favor both batsmen and bowlers, promising a thrilling encounter.</>
+                            )}
                         </p>
                     </CardContent>
                 </Card>

@@ -44,6 +44,7 @@ next-env.d.ts
 
 # backend repository (separate from frontend)
 backend-rust/
+backend-go/
 
 # binary assets tracking (allowing site assets)
 !public/*.png

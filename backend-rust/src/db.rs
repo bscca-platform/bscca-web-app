@@ -3,7 +3,7 @@ use std::env;
 use anyhow::Result;
 
 pub struct Database {
-    pub client: libsql::Connection,
+    db: libsql::Database,
 }
 
 impl Database {
@@ -16,9 +16,16 @@ impl Database {
         let db = Builder::new_remote(url, token)
             .build()
             .await?;
-        
-        let client = db.connect()?;
-        
-        Ok(Self { client })
+
+        // Verify connectivity on startup
+        let _test = db.connect()?;
+
+        Ok(Self { db })
+    }
+
+    /// Create a fresh connection for each request to avoid
+    /// Hrana "generation mismatch" errors on concurrent access.
+    pub fn conn(&self) -> Result<libsql::Connection> {
+        Ok(self.db.connect()?)
     }
 }

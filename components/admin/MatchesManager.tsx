@@ -5,7 +5,7 @@ import { useLiveMatch } from "@/hooks/useLiveMatch";
 import { api } from "@/lib/api";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Play, Calendar, MapPin, Edit2, Zap, Settings2, X, Trophy, Swords } from "lucide-react";
+import { Plus, Play, Calendar, MapPin, Edit2, Zap, Settings2, X, Trophy, Swords, Video, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -30,7 +30,7 @@ export default function MatchesManager() {
     const [isSchedulingModalOpen, setIsSchedulingModalOpen] = useState(false);
     const [editingMatch, setEditingMatch] = useState<any>(null);
     const [scheduleData, setScheduleData] = useState({
-        team1_id: "", team2_id: "", date: "", time: "", venue: "Supreme Arena", match_number: "", stage: "League Phase", match_type: "tournament" as "tournament" | "normal", tournament_id: ""
+        team1_id: "", team2_id: "", date: "", time: "", venue: "Supreme Arena", match_number: "", stage: "League Phase", match_type: "tournament" as "tournament" | "normal", tournament_id: "", highlights_url: ""
     });
 
     // Normal match finish modal
@@ -49,13 +49,14 @@ export default function MatchesManager() {
             setScheduleData({
                 team1_id: match.team1_id || "", team2_id: match.team2_id || "", date: match.date || "",
                 time: match.time || "", venue: match.venue || "Supreme Arena", match_number: match.match_number || "",
-                stage: match.stage || "League Phase", match_type: match.match_type || matchTab, tournament_id: match.tournament_id || ""
+                stage: match.stage || "League Phase", match_type: match.match_type || matchTab, tournament_id: match.tournament_id || "",
+                highlights_url: match.highlights_url || ""
             });
         } else {
             setEditingMatch(null);
             setScheduleData({
                 team1_id: "", team2_id: "", date: "", time: "", venue: "Supreme Arena", match_number: "",
-                stage: matchTab === "normal" ? "Friendly" : "League Phase", match_type: matchTab, tournament_id: ""
+                stage: matchTab === "normal" ? "Friendly" : "League Phase", match_type: matchTab, tournament_id: "", highlights_url: ""
             });
         }
         setIsSchedulingModalOpen(true);
@@ -63,14 +64,14 @@ export default function MatchesManager() {
 
     const handleSaveSchedule = async (e: React.FormEvent) => {
         e.preventDefault();
-        const { team1_id, team2_id, date, time, venue, match_number, stage, match_type, tournament_id } = scheduleData;
+        const { team1_id, team2_id, date, time, venue, match_number, stage, match_type, tournament_id, highlights_url } = scheduleData;
         if (!team1_id || !team2_id || !date) return alert("Teams and Date are required.");
         const t1 = teams.find(t => t.id === team1_id);
         const t2 = teams.find(t => t.id === team2_id);
         const slug = `${t1?.slug}-vs-${t2?.slug}-${date.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
         const payload: any = {
             team1_id, team2_id, t1: t1?.name, t2: t2?.name, i1: t1?.initials, i2: t2?.initials,
-            date, time, venue, match_number, stage, slug, match_type,
+            date, time, venue, match_number, stage, slug, match_type, highlights_url,
             status: editingMatch?.status || 'upcoming'
         };
         if (tournament_id) payload.tournament_id = tournament_id;
@@ -422,7 +423,22 @@ export default function MatchesManager() {
 }
 
 function MatchSchedulingModal({ isOpen, onClose, match, teams, tournaments, formData, setFormData, onSave, matchTab }: any) {
+    const [isUploading, setIsUploading] = useState(false);
+
     if (!isOpen) return null;
+
+    const handleUpload = async (file: File) => {
+        setIsUploading(true);
+        try {
+            const result = await api.uploadFile(file);
+            setFormData({ ...formData, highlights_url: result.url });
+        } catch (err: any) {
+            alert("Upload failed: " + err.message);
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
     const ic = "w-full bg-white/5 border border-white/10 rounded-xl py-2.5 px-4 text-sm font-medium focus:border-accent/50 outline-none transition-all placeholder:text-white/20 text-white";
     const lc = "text-[11px] font-medium uppercase tracking-wide text-white/50 ml-0.5";
 
@@ -470,6 +486,42 @@ function MatchSchedulingModal({ isOpen, onClose, match, teams, tournaments, form
                             </div>
                         )}
                         <div className="space-y-1.5"><label className={lc}>Stage</label><input type="text" value={formData.stage} onChange={(e) => setFormData({ ...formData, stage: e.target.value })} className={ic} placeholder={matchTab === 'normal' ? "Friendly" : "League Phase"} /></div>
+                        
+                        <div className="space-y-1.5 pt-2">
+                             <label className={lc}>Match Highlights (Video)</label>
+                             <div className="flex gap-4 items-center">
+                                 <div className="flex-1 relative">
+                                     <input 
+                                         type="text" 
+                                         value={formData.highlights_url} 
+                                         onChange={(e) => setFormData({ ...formData, highlights_url: e.target.value })} 
+                                         className={ic} 
+                                         placeholder="https://..." 
+                                     />
+                                     <Video className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+                                 </div>
+                                 <Button 
+                                     type="button" 
+                                     disabled={isUploading}
+                                     onClick={() => document.getElementById('highlights-upload')?.click()}
+                                     className="bg-white/5 border border-white/10 hover:bg-white/10 text-white rounded-xl h-11 px-6 text-xs"
+                                 >
+                                     {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Upload"}
+                                 </Button>
+                                 <input 
+                                     id="highlights-upload" 
+                                     type="file" 
+                                     accept="video/*" 
+                                     className="hidden" 
+                                     onChange={(e) => {
+                                         const file = e.target.files?.[0];
+                                         if (file) handleUpload(file);
+                                     }} 
+                                 />
+                             </div>
+                             <p className="text-[10px] text-white/20 mt-1 pl-1">Supports MP4, WebM up to 100MB directly to HF Dataset</p>
+                        </div>
+
                         <div className="flex gap-3 pt-3">
                             <Button type="button" onClick={onClose} variant="outline" className="flex-1 border border-white/10 text-white/50 rounded-xl h-11">Cancel</Button>
                             <Button type="submit" className="flex-1 bg-accent hover:bg-accent/90 text-white rounded-xl h-11">{match ? 'Update' : 'Schedule'}</Button>
@@ -480,3 +532,7 @@ function MatchSchedulingModal({ isOpen, onClose, match, teams, tournaments, form
         </div>
     );
 }
+
+// In the component body, I need to add isUploading state and handleUpload function.
+// I'll add them to the parent and pass down or just add to the modal if it's separate.
+// Actually, MatchSchedulingModal is a separate function. I'll add the logic inside it.

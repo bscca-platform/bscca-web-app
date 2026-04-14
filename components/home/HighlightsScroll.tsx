@@ -34,33 +34,39 @@ export default function HighlightsScroll({ highlights }: HighlightsScrollProps) 
                 </div>
             </div>
             <div ref={scrollRef} className="flex gap-5 overflow-x-auto pb-4 scrollbar-hide snap-x scroll-smooth">
-                {highlights.map((highlight) => (
-                    <Link key={highlight.id} href={`/highlights/${highlight.slug}`} className="snap-start text-inherit no-underline flex-shrink-0 group">
-                        <Card className="w-[260px] sm:w-[320px] rounded-2xl border border-border/60 bg-white shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden">
-                            {/* Thumbnail */}
-                            <div className="aspect-video bg-muted relative overflow-hidden">
-                                <div className="absolute inset-0 bg-primary/30 group-hover:bg-primary/10 transition-colors z-10 flex items-center justify-center">
-                                    <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg">
-                                        <Play className="w-5 h-5 text-primary fill-primary ml-0.5" />
+                {highlights.length > 0 ? (
+                    highlights.map((highlight) => (
+                        <Link key={highlight.id} href={`/highlights/${highlight.slug}`} className="snap-start text-inherit no-underline flex-shrink-0 group">
+                            <Card className="w-[260px] sm:w-[320px] rounded-2xl border border-border/60 bg-white shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden">
+                                {/* Thumbnail */}
+                                <div className="aspect-video bg-muted relative overflow-hidden">
+                                    <div className="absolute inset-0 bg-primary/30 group-hover:bg-primary/10 transition-colors z-10 flex items-center justify-center">
+                                        <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg">
+                                            <Play className="w-5 h-5 text-primary fill-primary ml-0.5" />
+                                        </div>
+                                    </div>
+                                    <div className="absolute bottom-2 right-2 z-20">
+                                        <Badge className="bg-black/60 text-white border-none text-[10px] rounded-md px-2 py-0.5">02:45</Badge>
                                     </div>
                                 </div>
-                                <div className="absolute bottom-2 right-2 z-20">
-                                    <Badge className="bg-black/60 text-white border-none text-[10px] rounded-md px-2 py-0.5">02:45</Badge>
-                                </div>
-                            </div>
 
-                            <CardContent className="p-4 space-y-1.5">
-                                <span className="text-[10px] font-semibold text-accent uppercase tracking-wide">{highlight.match}</span>
-                                <h5 className="font-semibold text-foreground text-sm tracking-tight leading-snug group-hover:text-accent transition-colors line-clamp-1">
-                                    {highlight.title}
-                                </h5>
-                                <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
-                                    {highlight.description}
-                                </p>
-                            </CardContent>
-                        </Card>
-                    </Link>
-                ))}
+                                <CardContent className="p-4 space-y-1.5">
+                                    <span className="text-[10px] font-semibold text-accent uppercase tracking-wide">{highlight.match}</span>
+                                    <h5 className="font-semibold text-foreground text-sm tracking-tight leading-snug group-hover:text-accent transition-colors line-clamp-1">
+                                        {highlight.title}
+                                    </h5>
+                                    <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
+                                        {highlight.description}
+                                    </p>
+                                </CardContent>
+                            </Card>
+                        </Link>
+                    ))
+                ) : (
+                    <div className="w-full py-16 text-center border border-dashed border-border/60 rounded-2xl bg-white/5 mx-1">
+                        <p className="text-muted-foreground text-sm font-medium">No highlights right now</p>
+                    </div>
+                )}
             </div>
         </section>
     );

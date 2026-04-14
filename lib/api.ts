@@ -41,6 +41,7 @@ export const api = {
     deleteTournament: (id: string) => apiFetch<any>(`/tournaments/${id}`, { method: 'DELETE' }),
     syncTournamentTeams: (id: string, teamIds: string[]) => apiFetch<any>(`/tournaments/${id}/teams`, { method: 'POST', body: JSON.stringify({ team_ids: teamIds }) }),
     getTeamBySlug: (slug: string) => apiFetch<any>(`/teams/slug/${slug}`),
+    getMatchBySlug: (slug: string) => apiFetch<any>(`/matches/slug/${slug}`),
     getPlayerBySlug: (slug: string) => apiFetch<any>(`/players/slug/${slug}`),
     getScorecardBatting: (matchId: string) => apiFetch<any[]>(`/scorecards/batting/${matchId}`),
     getScorecardBowling: (matchId: string) => apiFetch<any[]>(`/scorecards/bowling/${matchId}`),

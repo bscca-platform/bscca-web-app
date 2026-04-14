@@ -31,7 +31,7 @@ pub async fn broadcast_update(state: &Arc<AppState>, match_id: &str) {
 
 pub async fn get_teams(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     let sql = "SELECT id, name, slug, location, initials, description, image, achievements, played, won, lost, nrr, total_runs_scored, total_balls_faced, total_runs_conceded, total_balls_bowled FROM teams";
-    let mut rows = match state.db.client.query(sql, ()).await {
+    let mut rows = match state.db.conn().unwrap().query(sql, ()).await {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!("Failed to fetch teams: {:?}", e);
@@ -67,7 +67,7 @@ pub async fn get_teams(State(state): State<Arc<AppState>>) -> impl IntoResponse 
 
 pub async fn get_live_match(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     let sql = "SELECT id, slug, team1_id, team2_id, t1, t2, i1, i2, date, time, venue, status, match_number, stage, team1_score, team2_score, result_text, pom_text, winner_id, match_type, tournament_id FROM matches WHERE status = 'live' LIMIT 1";
-    let mut rows = match state.db.client.query(sql, ()).await {
+    let mut rows = match state.db.conn().unwrap().query(sql, ()).await {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!("Failed to fetch live match: {:?}", e);
@@ -108,7 +108,7 @@ pub async fn get_live_match(State(state): State<Arc<AppState>>) -> impl IntoResp
 
 pub async fn get_matches(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     let sql = "SELECT id, slug, team1_id, team2_id, t1, t2, i1, i2, date, time, venue, status, match_number, stage, team1_score, team2_score, result_text, pom_text, winner_id, match_type, tournament_id FROM matches ORDER BY created_at DESC";
-    let mut rows = match state.db.client.query(sql, ()).await {
+    let mut rows = match state.db.conn().unwrap().query(sql, ()).await {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!("Failed to fetch matches: {:?}", e);
@@ -149,7 +149,7 @@ pub async fn get_matches(State(state): State<Arc<AppState>>) -> impl IntoRespons
 
 pub async fn get_players(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     let sql = "SELECT id, team_id, name, slug, role, specialization, dob, style_batting, style_bowling, image, bio, matches_played, total_runs, total_balls_faced, strike_rate, highest_score, fifties, wickets, overs_bowled, runs_conceded, economy FROM players";
-    let mut rows = match state.db.client.query(sql, ()).await {
+    let mut rows = match state.db.conn().unwrap().query(sql, ()).await {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!("Failed to fetch players: {:?}", e);
@@ -196,7 +196,7 @@ pub async fn get_tournaments(State(state): State<Arc<AppState>>) -> impl IntoRes
                LEFT JOIN teams te ON tt.team_id = te.id 
                ORDER BY t.created_at DESC";
     
-    let mut rows = match state.db.client.query(sql, ()).await {
+    let mut rows = match state.db.conn().unwrap().query(sql, ()).await {
         Ok(rows) => rows,
         Err(e) => {
             tracing::error!("Failed to fetch tournaments: {:?}", e);
@@ -258,7 +258,7 @@ pub async fn create_tournament(
 ) -> impl IntoResponse {
     let id = Uuid::new_v4().to_string();
     let sql = "INSERT INTO tournaments (id, name, slug, start_date, end_date, description, status) VALUES (?, ?, ?, ?, ?, ?, ?)";
-    let res = state.db.client.execute(sql, libsql::params![
+    let res = state.db.conn().unwrap().execute(sql, libsql::params![
         id.clone(), payload.name, payload.slug, payload.start_date, payload.end_date, payload.description, payload.status
     ]).await;
 
@@ -274,7 +274,7 @@ pub async fn update_tournament(
     Json(payload): Json<Tournament>,
 ) -> impl IntoResponse {
     let sql = "UPDATE tournaments SET name=?, slug=?, start_date=?, end_date=?, description=?, status=? WHERE id=?";
-    let res = state.db.client.execute(sql, libsql::params![
+    let res = state.db.conn().unwrap().execute(sql, libsql::params![
         payload.name, payload.slug, payload.start_date, payload.end_date, payload.description, payload.status, id
     ]).await;
 
@@ -288,8 +288,8 @@ pub async fn delete_tournament(
     State(state): State<Arc<AppState>>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
-    let _ = state.db.client.execute("DELETE FROM tournament_teams WHERE tournament_id = ?", libsql::params![id.clone()]).await;
-    let res = state.db.client.execute("DELETE FROM tournaments WHERE id = ?", libsql::params![id]).await;
+    let _ = state.db.conn().unwrap().execute("DELETE FROM tournament_teams WHERE tournament_id = ?", libsql::params![id.clone()]).await;
+    let res = state.db.conn().unwrap().execute("DELETE FROM tournaments WHERE id = ?", libsql::params![id]).await;
 
     match res {
         Ok(_) => StatusCode::OK.into_response(),
@@ -308,11 +308,11 @@ pub async fn sync_tournament_teams(
     Json(payload): Json<SyncTeamsPayload>,
 ) -> impl IntoResponse {
     // 1. Delete existing
-    let _ = state.db.client.execute("DELETE FROM tournament_teams WHERE tournament_id = ?", libsql::params![id.clone()]).await;
+    let _ = state.db.conn().unwrap().execute("DELETE FROM tournament_teams WHERE tournament_id = ?", libsql::params![id.clone()]).await;
     
     // 2. Insert new
     for team_id in payload.team_ids {
-        let _ = state.db.client.execute(
+        let _ = state.db.conn().unwrap().execute(
             "INSERT INTO tournament_teams (tournament_id, team_id) VALUES (?, ?)",
             libsql::params![id.clone(), team_id]
         ).await;
@@ -344,7 +344,7 @@ pub async fn create_match(
     let sql = "INSERT INTO matches (id, slug, team1_id, team2_id, t1, t2, i1, i2, date, time, venue, status, match_number, stage, match_type, tournament_id) 
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     
-    let res = state.db.client.execute(sql, libsql::params![
+    let res = state.db.conn().unwrap().execute(sql, libsql::params![
         id.clone(), payload.slug, payload.team1_id, payload.team2_id, payload.t1, payload.t2, payload.i1, payload.i2,
         payload.date, payload.time, payload.venue, payload.status, payload.match_number, payload.stage, payload.match_type, payload.tournament_id
     ]).await;
@@ -361,7 +361,7 @@ pub async fn update_match(
     Json(payload): Json<Match>,
 ) -> impl IntoResponse {
     let sql = "UPDATE matches SET slug=?, team1_id=?, team2_id=?, t1=?, t2=?, i1=?, i2=?, date=?, time=?, venue=?, status=?, match_number=?, stage=?, team1_score=?, team2_score=?, result_text=?, pom_text=?, winner_id=?, match_type=?, tournament_id=? WHERE id=?";
-    let res = state.db.client.execute(sql, libsql::params![
+    let res = state.db.conn().unwrap().execute(sql, libsql::params![
         payload.slug, payload.team1_id, payload.team2_id, payload.t1, payload.t2, payload.i1, payload.i2, payload.date, payload.time, payload.venue, payload.status, payload.match_number, payload.stage, payload.team1_score, payload.team2_score, payload.result_text.unwrap_or_default(), payload.pom_text.unwrap_or_default(), payload.winner_id, payload.match_type, payload.tournament_id,
         id.clone()
     ]).await;
@@ -401,7 +401,7 @@ pub async fn upsert_live_details(
     
     let id = if payload.id.is_empty() { Uuid::new_v4().to_string() } else { payload.id };
 
-    let res = state.db.client.execute(sql, libsql::params![
+    let res = state.db.conn().unwrap().execute(sql, libsql::params![
         id, payload.match_id.clone(), payload.team1_id, payload.team2_id, payload.team1_score, payload.team1_overs, payload.team2_score, payload.team2_overs, payload.team1_status, payload.team2_status, payload.toss_winner_id, payload.match_status_text,
         payload.current_batter_1_id, payload.current_batter_1_runs, payload.current_batter_1_balls,
         payload.current_batter_2_id, payload.current_batter_2_runs, payload.current_batter_2_balls,
@@ -429,7 +429,7 @@ pub async fn initialize_match(
     Json(payload): Json<InitializeMatchPayload>,
 ) -> impl IntoResponse {
     // 1. Update match status to 'live'
-    let _ = state.db.client.execute("UPDATE matches SET status = 'live' WHERE id = ?", libsql::params![payload.match_id.clone()]).await;
+    let _ = state.db.conn().unwrap().execute("UPDATE matches SET status = 'live' WHERE id = ?", libsql::params![payload.match_id.clone()]).await;
 
     // 2. Fetch team names for toss text
     // (Simplified: assuming IDs are enough for now or we just use a generic text)
@@ -439,7 +439,7 @@ pub async fn initialize_match(
     let sql = "INSERT INTO live_match_details (id, match_id, toss_winner_id, match_status_text, team1_score, team1_overs, team2_score, team2_status, last_updated) 
                VALUES (?, ?, ?, ?, '0/0', '0.0', '0/0', 'Yet to Bat', CURRENT_TIMESTAMP)";
     
-    let res = state.db.client.execute(sql, libsql::params![
+    let res = state.db.conn().unwrap().execute(sql, libsql::params![
         Uuid::new_v4().to_string(), payload.match_id.clone(), payload.toss_winner_id, toss_text
     ]).await;
 
@@ -467,7 +467,7 @@ pub async fn finish_match(
     Json(payload): Json<FinishMatchPayload>,
 ) -> impl IntoResponse {
     // 1. Fetch live details first to get the final balls/runs
-    let mut rows = match state.db.client.query("SELECT * FROM live_match_details WHERE match_id = ?", libsql::params![payload.match_id.clone()]).await {
+    let mut rows = match state.db.conn().unwrap().query("SELECT * FROM live_match_details WHERE match_id = ?", libsql::params![payload.match_id.clone()]).await {
         Ok(rows) => rows,
         Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to fetch live details").into_response(),
     };
@@ -491,14 +491,14 @@ pub async fn finish_match(
     let team2_balls = cricket::overs_string_to_balls(&team2_overs_str);
 
     // 2. Update match status
-    let _ = state.db.client.execute(
+    let _ = state.db.conn().unwrap().execute(
         "UPDATE matches SET status = 'finished', team1_score = ?, team2_score = ?, winner_id = ?, result_text = ?, pom_text = ? WHERE id = ?",
         libsql::params![payload.team1_score, payload.team2_score, payload.winner_id.clone(), payload.result_text.unwrap_or_default(), payload.pom_text.unwrap_or_default(), payload.match_id.clone()]
     ).await;
 
     // 3. Update Team Stats (Automation)
     async fn update_team(state: &Arc<AppState>, team_id: &str, runs_scored: i32, balls_faced: i32, runs_conceded: i32, balls_bowled: i32, is_win: bool) {
-        let mut rows = state.db.client.query("SELECT * FROM teams WHERE id = ?", libsql::params![team_id]).await.unwrap();
+        let mut rows = state.db.conn().unwrap().query("SELECT * FROM teams WHERE id = ?", libsql::params![team_id]).await.unwrap();
         if let Ok(Some(row)) = rows.next().await {
             let mut played: i32 = row.get(8).unwrap_or(0);
             let mut won: i32 = row.get(9).unwrap_or(0);
@@ -517,7 +517,7 @@ pub async fn finish_match(
 
             let nrr = cricket::calculate_nrr(total_runs_scored, total_balls_faced, total_runs_conceded, total_balls_bowled);
 
-            let _ = state.db.client.execute(
+            let _ = state.db.conn().unwrap().execute(
                 "UPDATE teams SET played=?, won=?, lost=?, nrr=?, total_runs_scored=?, total_balls_faced=?, total_runs_conceded=?, total_balls_bowled=? WHERE id=?",
                 libsql::params![played, won, lost, nrr, total_runs_scored, total_balls_faced, total_runs_conceded, total_balls_bowled, team_id]
             ).await;
@@ -529,21 +529,21 @@ pub async fn finish_match(
 
     // 4. Update Player Stats (Automation)
     // Batting stats
-    let mut batting_rows = state.db.client.query("SELECT * FROM scorecard_batting WHERE match_id = ?", libsql::params![payload.match_id.clone()]).await.unwrap();
+    let mut batting_rows = state.db.conn().unwrap().query("SELECT * FROM scorecard_batting WHERE match_id = ?", libsql::params![payload.match_id.clone()]).await.unwrap();
     while let Ok(Some(row)) = batting_rows.next().await {
         let p_id: String = row.get(3).unwrap_or_default();
         let p_runs: i32 = row.get(6).unwrap_or(0);
         let p_balls: i32 = row.get(7).unwrap_or(0);
         let _p_is_not_out: i32 = row.get(11).unwrap_or(0);
         
-        let _ = state.db.client.execute(
+        let _ = state.db.conn().unwrap().execute(
             "UPDATE players SET matches_played = matches_played + 1, total_runs = total_runs + ?, total_balls_faced = total_balls_faced + ?, highest_score = MAX(highest_score, ?), fifties = fifties + (CASE WHEN ? >= 50 THEN 1 ELSE 0 END) WHERE id = ?",
             libsql::params![p_runs, p_balls, p_runs, p_runs, p_id]
         ).await;
     }
     
     // Bowling stats
-    let mut bowling_rows = state.db.client.query("SELECT * FROM scorecard_bowling WHERE match_id = ?", libsql::params![payload.match_id.clone()]).await.unwrap();
+    let mut bowling_rows = state.db.conn().unwrap().query("SELECT * FROM scorecard_bowling WHERE match_id = ?", libsql::params![payload.match_id.clone()]).await.unwrap();
     while let Ok(Some(row)) = bowling_rows.next().await {
         let p_id: String = row.get(3).unwrap_or_default();
         let _p_balls: i32 = row.get(6).unwrap_or(0);
@@ -551,7 +551,7 @@ pub async fn finish_match(
         let p_wickets: i32 = row.get(8).unwrap_or(0);
         
         // We'll calculate economy later in a getter or here. Let's just update raw totals.
-        let _ = state.db.client.execute(
+        let _ = state.db.conn().unwrap().execute(
             "UPDATE players SET wickets = wickets + ?, runs_conceded = runs_conceded + ?, matches_played = matches_played + 1 WHERE id = ?",
             libsql::params![p_wickets, p_runs, p_id]
         ).await;
@@ -568,7 +568,7 @@ pub async fn create_team(
 ) -> impl IntoResponse {
     let id = Uuid::new_v4().to_string();
     let sql = "INSERT INTO teams (id, name, slug, location, initials, description, image, played, won, lost, nrr, total_runs_scored, total_balls_faced, total_runs_conceded, total_balls_bowled) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-    let res = state.db.client.execute(sql, libsql::params![
+    let res = state.db.conn().unwrap().execute(sql, libsql::params![
         id.clone(), payload.name, payload.slug, payload.location, payload.initials, payload.description, payload.image, payload.played, payload.won, payload.lost, payload.nrr,
         payload.total_runs_scored, payload.total_balls_faced, payload.total_runs_conceded, payload.total_balls_bowled
     ]).await;
@@ -585,7 +585,7 @@ pub async fn update_team(
     Json(payload): Json<Team>,
 ) -> impl IntoResponse {
     let sql = "UPDATE teams SET name=?, slug=?, location=?, initials=?, description=?, image=?, played=?, won=?, lost=?, nrr=?, total_runs_scored=?, total_balls_faced=?, total_runs_conceded=?, total_balls_bowled=? WHERE id=?";
-    let res = state.db.client.execute(sql, libsql::params![
+    let res = state.db.conn().unwrap().execute(sql, libsql::params![
         payload.name, payload.slug, payload.location, payload.initials, payload.description, payload.image, payload.played, payload.won, payload.lost, payload.nrr,
         payload.total_runs_scored, payload.total_balls_faced, payload.total_runs_conceded, payload.total_balls_bowled, id.clone()
     ]).await;
@@ -601,9 +601,9 @@ pub async fn delete_team(
     Path(id): Path<String>,
 ) -> impl IntoResponse {
     // Also clean up players referencing this team
-    let _ = state.db.client.execute("UPDATE players SET team_id = NULL WHERE team_id = ?", libsql::params![id.clone()]).await;
-    let _ = state.db.client.execute("DELETE FROM tournament_teams WHERE team_id = ?", libsql::params![id.clone()]).await;
-    let res = state.db.client.execute("DELETE FROM teams WHERE id = ?", libsql::params![id]).await;
+    let _ = state.db.conn().unwrap().execute("UPDATE players SET team_id = NULL WHERE team_id = ?", libsql::params![id.clone()]).await;
+    let _ = state.db.conn().unwrap().execute("DELETE FROM tournament_teams WHERE team_id = ?", libsql::params![id.clone()]).await;
+    let res = state.db.conn().unwrap().execute("DELETE FROM teams WHERE id = ?", libsql::params![id]).await;
 
     match res {
         Ok(_) => StatusCode::OK.into_response(),
@@ -616,7 +616,7 @@ pub async fn get_team_by_slug(
     Path(slug): Path<String>,
 ) -> impl IntoResponse {
     let sql = "SELECT id, name, slug, location, initials, description, image, achievements, played, won, lost, nrr, total_runs_scored, total_balls_faced, total_runs_conceded, total_balls_bowled FROM teams WHERE slug = ? LIMIT 1";
-    let mut rows = match state.db.client.query(sql, libsql::params![slug]).await {
+    let mut rows = match state.db.conn().unwrap().query(sql, libsql::params![slug]).await {
         Ok(rows) => rows,
         Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, format!("DB Error: {}", e)).into_response(),
     };
@@ -657,7 +657,7 @@ pub async fn get_player_by_slug(
                LEFT JOIN teams t ON p.team_id = t.id 
                WHERE p.slug = ? LIMIT 1";
     
-    let mut rows = match state.db.client.query(sql, libsql::params![slug]).await {
+    let mut rows = match state.db.conn().unwrap().query(sql, libsql::params![slug]).await {
         Ok(rows) => rows,
         Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, format!("DB Error: {}", e)).into_response(),
     };
@@ -707,7 +707,7 @@ pub async fn get_scorecard_batting(
                WHERE sb.match_id = ? 
                ORDER BY sb.order_index ASC";
     
-    let mut rows = match state.db.client.query(sql, libsql::params![match_id]).await {
+    let mut rows = match state.db.conn().unwrap().query(sql, libsql::params![match_id]).await {
         Ok(rows) => rows,
         Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, format!("DB Error: {}", e)).into_response(),
     };
@@ -744,7 +744,7 @@ pub async fn get_scorecard_bowling(
                WHERE sb.match_id = ? 
                ORDER BY sb.order_index ASC";
     
-    let mut rows = match state.db.client.query(sql, libsql::params![match_id]).await {
+    let mut rows = match state.db.conn().unwrap().query(sql, libsql::params![match_id]).await {
         Ok(rows) => rows,
         Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, format!("DB Error: {}", e)).into_response(),
     };
@@ -773,7 +773,7 @@ pub async fn get_team_players(
     Path(id): Path<String>,
 ) -> impl IntoResponse {
     let sql = "SELECT id, team_id, name, slug, role, specialization, dob, style_batting, style_bowling, image, bio, matches_played, total_runs, total_balls_faced, strike_rate, highest_score, fifties, wickets, overs_bowled, runs_conceded, economy FROM players WHERE team_id = ?";
-    let mut rows = match state.db.client.query(sql, libsql::params![id]).await {
+    let mut rows = match state.db.conn().unwrap().query(sql, libsql::params![id]).await {
         Ok(rows) => rows,
         Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, format!("DB Error: {}", e)).into_response(),
     };
@@ -815,7 +815,7 @@ pub async fn get_team_matches(
     Path(id): Path<String>,
 ) -> impl IntoResponse {
     let sql = "SELECT * FROM matches WHERE team1_id = ? OR team2_id = ? ORDER BY date DESC";
-    let mut rows = match state.db.client.query(sql, libsql::params![id.clone(), id]).await {
+    let mut rows = match state.db.conn().unwrap().query(sql, libsql::params![id.clone(), id]).await {
         Ok(rows) => rows,
         Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, format!("DB Error: {}", e)).into_response(),
     };
@@ -858,7 +858,7 @@ pub async fn get_team_scorecards_batting(
                WHERE sb.team_id = ? 
                ORDER BY sb.runs DESC";
     
-    let mut rows = match state.db.client.query(sql, libsql::params![id]).await {
+    let mut rows = match state.db.conn().unwrap().query(sql, libsql::params![id]).await {
         Ok(rows) => rows,
         Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, format!("DB Error: {}", e)).into_response(),
     };
@@ -895,7 +895,7 @@ pub async fn get_team_scorecards_bowling(
                WHERE sb.team_id = ? 
                ORDER BY sb.wickets DESC";
     
-    let mut rows = match state.db.client.query(sql, libsql::params![id]).await {
+    let mut rows = match state.db.conn().unwrap().query(sql, libsql::params![id]).await {
         Ok(rows) => rows,
         Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, format!("DB Error: {}", e)).into_response(),
     };
@@ -923,7 +923,7 @@ pub async fn delete_player(
     State(state): State<Arc<AppState>>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
-    let res = state.db.client.execute("DELETE FROM players WHERE id = ?", libsql::params![id]).await;
+    let res = state.db.conn().unwrap().execute("DELETE FROM players WHERE id = ?", libsql::params![id]).await;
 
     match res {
         Ok(_) => StatusCode::OK.into_response(),
@@ -938,7 +938,7 @@ pub async fn create_player(
     let id = Uuid::new_v4().to_string();
     let sql = "INSERT INTO players (id, team_id, name, slug, role, specialization, dob, style_batting, style_bowling, image, bio, matches_played, total_runs, total_balls_faced, strike_rate, highest_score, fifties, wickets, overs_bowled, runs_conceded, economy) 
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-    let res = state.db.client.execute(sql, libsql::params![
+    let res = state.db.conn().unwrap().execute(sql, libsql::params![
         id.clone(), payload.team_id, payload.name, payload.slug, payload.role, payload.specialization,
         payload.dob, payload.style_batting, payload.style_bowling, payload.image, payload.bio,
         payload.matches_played, payload.total_runs, payload.total_balls_faced, payload.strike_rate,
@@ -957,7 +957,7 @@ pub async fn update_player(
     Json(payload): Json<Player>,
 ) -> impl IntoResponse {
     let sql = "UPDATE players SET team_id=?, name=?, slug=?, role=?, specialization=?, dob=?, style_batting=?, style_bowling=?, image=?, bio=?, matches_played=?, total_runs=?, total_balls_faced=?, strike_rate=?, highest_score=?, fifties=?, wickets=?, overs_bowled=?, runs_conceded=?, economy=?, last_updated=CURRENT_TIMESTAMP WHERE id=?";
-    let res = state.db.client.execute(sql, libsql::params![
+    let res = state.db.conn().unwrap().execute(sql, libsql::params![
         payload.team_id, payload.name, payload.slug, payload.role, payload.specialization,
         payload.dob, payload.style_batting, payload.style_bowling, payload.image, payload.bio,
         payload.matches_played, payload.total_runs, payload.total_balls_faced, payload.strike_rate,
@@ -1069,7 +1069,7 @@ pub async fn upsert_scorecard_batting(
     
     let id = if payload.id.is_empty() { Uuid::new_v4().to_string() } else { payload.id };
     
-    let res = state.db.client.execute(sql, libsql::params![
+    let res = state.db.conn().unwrap().execute(sql, libsql::params![
         id, payload.match_id, payload.team_id, payload.player_id, payload.player_name, payload.team_name,
         payload.runs, payload.balls, payload.fours, payload.sixes, 
         payload.out_info, payload.is_not_out as i32, payload.order_index
@@ -1093,7 +1093,7 @@ pub async fn upsert_scorecard_bowling(
     
     let id = if payload.id.is_empty() { Uuid::new_v4().to_string() } else { payload.id };
     
-    let res = state.db.client.execute(sql, libsql::params![
+    let res = state.db.conn().unwrap().execute(sql, libsql::params![
         id, payload.match_id, payload.team_id, payload.player_id, payload.player_name, payload.team_name,
         payload.overs_balls, payload.runs, payload.wickets, payload.order_index
     ]).await;
@@ -1107,17 +1107,17 @@ pub async fn upsert_scorecard_bowling(
 pub async fn get_admin_stats(
     State(state): State<Arc<AppState>>,
 ) -> impl IntoResponse {
-    let players_count = match state.db.client.query("SELECT COUNT(*) FROM players", ()).await {
+    let players_count = match state.db.conn().unwrap().query("SELECT COUNT(*) FROM players", ()).await {
         Ok(mut rows) => rows.next().await.ok().flatten().map(|r| r.get::<i64>(0).unwrap_or(0)).unwrap_or(0),
         Err(_) => 0,
     };
 
-    let teams_count = match state.db.client.query("SELECT COUNT(*) FROM teams", ()).await {
+    let teams_count = match state.db.conn().unwrap().query("SELECT COUNT(*) FROM teams", ()).await {
         Ok(mut rows) => rows.next().await.ok().flatten().map(|r| r.get::<i64>(0).unwrap_or(0)).unwrap_or(0),
         Err(_) => 0,
     };
 
-    let matches_count = match state.db.client.query("SELECT COUNT(*) FROM matches", ()).await {
+    let matches_count = match state.db.conn().unwrap().query("SELECT COUNT(*) FROM matches", ()).await {
         Ok(mut rows) => rows.next().await.ok().flatten().map(|r| r.get::<i64>(0).unwrap_or(0)).unwrap_or(0),
         Err(_) => 0,
     };
@@ -1134,7 +1134,7 @@ pub async fn health_check(
     State(state): State<Arc<AppState>>,
 ) -> impl IntoResponse {
     // Verify DB connectivity with a simple query
-    match state.db.client.query("SELECT 1", ()).await {
+    match state.db.conn().unwrap().query("SELECT 1", ()).await {
         Ok(_) => Json(serde_json::json!({
             "status": "ok",
             "database": "connected",
