@@ -39,10 +39,10 @@ export default function Footer() {
                         © 2026 BSCCA. All rights reserved.
                     </p>
                     <div className="flex items-center gap-2 group order-1 sm:order-2">
-                        <span className="text-[10px] sm:text-xs font-medium text-muted-foreground/60 uppercase tracking-wider">Powered by</span>
-                        <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-full border border-border/50 group-hover:border-accent/30 transition-all">
-                            <img src="/bandhannova-logo-final.svg" alt="BandhanNova Logo" className="h-4 sm:h-5 w-auto" />
-                            <span className="text-xs sm:text-sm font-bold tracking-tight text-foreground transition-colors group-hover:text-accent">BandhanNova Platforms</span>
+                        <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground/40 uppercase tracking-[0.15em]">Powered by</span>
+                        <div className="flex items-center gap-1.5 transition-transform duration-300 group-hover:translate-x-0.5">
+                            <img src="/bandhannova-logo-final.svg" alt="BandhanNova Logo" className="h-6 sm:h-7 w-auto" />
+                            <span className="text-[11px] sm:text-sm font-bold tracking-tight text-foreground/80 transition-colors">platforms</span>
                         </div>
                     </div>
                 </div>
